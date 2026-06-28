@@ -4,9 +4,12 @@ import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc } from "firebase/firestore";
 
-export default function DaftarBuku() {
+export default function DaftarBuku({ isAdmin }) {
   const [buku, setBuku] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // State untuk Fitur Pencarian
+  const [kataKunci, setKataKunci] = useState("");
 
   // State Terintegrasi untuk Inline Editing
   const [editId, setEditId] = useState(null);
@@ -77,22 +80,50 @@ export default function DaftarBuku() {
     }
   };
 
+  // LOGIKA PENCARIAN
+  const bukuDifilter = buku.filter((item) => {
+    const keyword = kataKunci.toLowerCase();
+    const matchJudul = item.judul?.toLowerCase().includes(keyword);
+    const matchPenulis = item.penulis?.toLowerCase().includes(keyword);
+    const matchPenerbit = item.penerbit?.toLowerCase().includes(keyword);
+    
+    return matchJudul || matchPenulis || matchPenerbit;
+  });
+
   if (loading) {
     return <div className="p-4 text-gray-600 text-center font-medium animate-pulse">Memuat katalog...</div>;
   }
 
   return (
     <div className="mt-10 max-w-4xl w-full px-4">
-      <div className="flex justify-between items-center mb-6 border-b pb-2">
-        <h2 className="text-2xl font-bold text-gray-800">Katalog Koleksi Perpustakaan</h2>
-        <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">{buku.length} Judul</span>
+      {/* Header & Search Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4 gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Katalog Koleksi</h2>
+          <p className="text-sm text-gray-500 mt-1">Total: {buku.length} Judul Buku</p>
+        </div>
+        
+        <div className="w-full sm:w-72">
+          <input 
+            type="text"
+            placeholder="Cari judul, penulis, penerbit..."
+            value={kataKunci}
+            onChange={(e) => setKataKunci(e.target.value)}
+            className="w-full p-2.5 pl-4 border border-gray-300 rounded-full text-sm text-gray-800 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-shadow shadow-sm"
+          />
+        </div>
       </div>
       
-      {buku.length === 0 ? (
-        <p className="text-gray-500 italic text-center py-8">Belum ada buku dalam katalog.</p>
+      {/* List Daftar Buku */}
+      {bukuDifilter.length === 0 ? (
+        <div className="text-center py-10">
+          <p className="text-gray-500 italic">
+            {kataKunci ? `Buku dengan kata kunci "${kataKunci}" tidak ditemukan.` : "Belum ada buku dalam katalog."}
+          </p>
+        </div>
       ) : (
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-          {buku.map((item) => (
+          {bukuDifilter.map((item) => (
             <div key={item.id} className="p-4 border rounded-xl shadow-sm bg-white hover:shadow-md transition-all flex gap-4 relative">
               
               {editId === item.id ? (
@@ -149,22 +180,25 @@ export default function DaftarBuku() {
                         Stok: {item.stok} eks
                       </span>
                       
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => handleEditClick(item)}
-                          className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-md hover:bg-amber-100 transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id, item.judul)}
-                          className="px-2.5 py-1 bg-red-50 text-red-700 border border-red-200 text-xs font-semibold rounded-md hover:bg-red-100 transition-colors"
-                        >
-                          Hapus
-                        </button>
-                      </div>
+                      {/* FITUR PEMISAHAN AKSES: Tombol Edit & Hapus hanya muncul jika isAdmin bernilai true */}
+                      {isAdmin && (
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => handleEditClick(item)}
+                            className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold rounded-md hover:bg-amber-100 transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id, item.judul)}
+                            className="px-2.5 py-1 bg-red-50 text-red-700 border border-red-200 text-xs font-semibold rounded-md hover:bg-red-100 transition-colors"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  </div> {/* <--- INI TAG PENUTUP YANG HILANG SEBELUMNYA */}
+                  </div>
                 </>
               )}
 
