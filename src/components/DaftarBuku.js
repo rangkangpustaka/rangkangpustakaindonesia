@@ -1,14 +1,19 @@
 // src/components/DaftarBuku.js
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, addDoc } from "firebase/firestore";
+// IMPORT LIBRARY EXCEL DI SINI
+import * as XLSX from "xlsx";
 
 export default function DaftarBuku({ isAdmin }) {
   const [buku, setBuku] = useState([]);
   const [loading, setLoading] = useState(true);
   const [kataKunci, setKataKunci] = useState("");
   const [bukuTerpilih, setBukuTerpilih] = useState([]);
+  const [isImporting, setIsImporting] = useState(false); // State untuk loading import
+
+  const fileInputRef = useRef(null); // Referensi untuk input file tersembunyi
 
   const [editId, setEditId] = useState(null);
   const [editNoBuku, setEditNoBuku] = useState("");
@@ -101,14 +106,75 @@ export default function DaftarBuku({ isAdmin }) {
     }
   };
 
+  // ----------------------------------------------------------------------
+  // FUNGSI BARU: IMPORT DARI EXCEL
+  // ----------------------------------------------------------------------
+  const handleImportExcel = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+
+    reader.onload = async (evt) => {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Ambil sheet pertama saja
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Ubah isi sheet menjadi array JSON
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        let hitungBerhasil = 0;
+
+        // Looping setiap baris di Excel
+        for (const baris of jsonData) {
+          // Syarat wajib: Harus ada Judul dan Penulis
+          if (baris.Judul && baris.Penulis) {
+            await addDoc(collection(db, "buku"), {
+              noBuku: baris["No Buku"] ? String(baris["No Buku"]) : "-",
+              kategori: baris["Kategori"] ? String(baris["Kategori"]) : "-",
+              judul: String(baris["Judul"]),
+              penulis: String(baris["Penulis"]),
+              isbn: baris["ISBN"] ? String(baris["ISBN"]) : "-",
+              penerbit: baris["Penerbit"] ? String(baris["Penerbit"]) : "-",
+              tempatTerbit: baris["Tempat Terbit"] ? String(baris["Tempat Terbit"]) : "-",
+              tahun: baris["Tahun"] ? String(baris["Tahun"]) : "-",
+              sumber: baris["Sumber"] ? String(baris["Sumber"]) : "-",
+              stok: baris["Stok"] ? Number(baris["Stok"]) : 1, // Default stok 1
+              sampul: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500&auto=format&fit=crop&q=60",
+              createdAt: new Date(),
+            });
+            hitungBerhasil++;
+          }
+        }
+
+        alert(`Luar Biasa! ${hitungBerhasil} buku berhasil diimpor ke database.`);
+      } catch (error) {
+        console.error(error);
+        alert("Gagal mengimpor file! Pastikan format Excel Anda benar.");
+      } finally {
+        setIsImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  // ----------------------------------------------------------------------
+
   const handleExportExcel = () => {
     const dataEkspor = bukuTerpilih.length > 0 ? bukuDifilter.filter(b => bukuTerpilih.includes(b.id)) : bukuDifilter;
     if (dataEkspor.length === 0) return alert("Tidak ada data untuk diekspor.");
 
-    const headers = ["No", "No Buku", "Kategori", "Judul", "Penulis", "Penerbit", "Tahun", "Sumber", "Stok"];
+    const headers = ["No", "No Buku", "Kategori", "Judul", "Penulis", "Penerbit", "Tempat Terbit", "Tahun", "Sumber", "Stok"];
     const csvData = dataEkspor.map((item, index) => [
       index + 1, `"${item.noBuku || "-"}"`, `"${item.kategori || "-"}"`, `"${item.judul}"`,
-      `"${item.penulis}"`, `"${item.penerbit || "-"}"`, `"${item.tahun || "-"}"`, 
+      `"${item.penulis}"`, `"${item.penerbit || "-"}"`, `"${item.tempatTerbit || "-"}"`, `"${item.tahun || "-"}"`, 
       `"${item.sumber || "-"}"`, item.stok
     ]);
     const csvContent = [headers.join(","), ...csvData.map(row => row.join(","))].join("\n");
@@ -132,6 +198,15 @@ export default function DaftarBuku({ isAdmin }) {
   return (
     <div className="mt-10 max-w-4xl w-full px-4 print:mt-0 print:px-0">
       
+      {/* INPUT FILE TERSEMBUNYI UNTUK IMPORT EXCEL */}
+      <input 
+        type="file" 
+        accept=".xlsx, .xls" 
+        ref={fileInputRef} 
+        onChange={handleImportExcel} 
+        className="hidden" 
+      />
+
       {/* --- TAMPILAN WEB --- */}
       <div className="print:hidden">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4 gap-4">
@@ -140,13 +215,22 @@ export default function DaftarBuku({ isAdmin }) {
             <p className="text-sm text-gray-500 mt-1">Total: {buku.length} Judul Buku</p>
           </div>
           
-          <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
-            <input type="text" placeholder="Cari judul, kategori, No. buku..." value={kataKunci} onChange={(e) => setKataKunci(e.target.value)} className="w-full sm:w-64 p-2.5 border rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+          <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 flex-wrap">
+            <input type="text" placeholder="Cari judul, kategori, No. buku..." value={kataKunci} onChange={(e) => setKataKunci(e.target.value)} className="w-full sm:w-56 p-2 border rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500" />
             
             {isAdmin && (
-              <div className="flex gap-2">
-                <button onClick={handleExportExcel} className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 text-sm">📊 Export Excel</button>
-                <button onClick={handleCetakLabel} className="px-4 py-2 bg-gray-800 text-white font-bold rounded-lg hover:bg-gray-900 text-sm">🏷️ Cetak Label</button>
+              <div className="flex gap-2 flex-wrap">
+                {/* TOMBOL IMPORT EXCEL BARU */}
+                <button 
+                  onClick={() => fileInputRef.current.click()} 
+                  disabled={isImporting}
+                  className={`px-3 py-2 text-white font-bold rounded-lg text-sm transition-all ${isImporting ? 'bg-gray-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                >
+                  {isImporting ? "⏳ Mengimpor..." : "📥 Import Excel"}
+                </button>
+
+                <button onClick={handleExportExcel} className="px-3 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 text-sm">📊 Export</button>
+                <button onClick={handleCetakLabel} className="px-3 py-2 bg-gray-800 text-white font-bold rounded-lg hover:bg-gray-900 text-sm">🏷️ Cetak</button>
               </div>
             )}
           </div>
@@ -232,7 +316,6 @@ export default function DaftarBuku({ isAdmin }) {
           
           <div key={`label-${item.id}`} className="w-[9cm] h-[4.5cm] border-[3px] border-black flex flex-col bg-white text-black font-sans break-inside-avoid overflow-hidden">
             
-            {/* KOTAK ATAS: Dibuat sedikit lebih pendek (45% dari tinggi) */}
             <div className="flex border-b-[3px] border-black h-[45%]">
               <div className="w-[35%] border-r-[3px] border-black flex items-center justify-center p-1 bg-white">
                 <img src="/logo.jpg" alt="Logo Rangkang Pustaka" className="max-h-full max-w-full object-contain grayscale" />
@@ -243,7 +326,6 @@ export default function DaftarBuku({ isAdmin }) {
               </div>
             </div>
 
-            {/* KOTAK BAWAH: Diberi ruang lebih besar (55%) dan font dikecilkan ke 11px */}
             <div className="flex h-[55%] text-[11px]">
               <div className="w-[35%] border-r-[3px] border-black px-1.5 py-1 flex flex-col justify-between font-medium">
                 <p>No. Buku</p>
