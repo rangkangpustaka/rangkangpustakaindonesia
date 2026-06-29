@@ -7,6 +7,8 @@ import InputAnggota from "@/components/InputAnggota";
 import DaftarAnggota from "@/components/DaftarAnggota";
 import InputPeminjaman from "@/components/InputPeminjaman"; 
 import DaftarPeminjaman from "@/components/DaftarPeminjaman"; 
+import InputAbsensi from "@/components/InputAbsensi";       // IMPORT BARU
+import DaftarAbsensi from "@/components/DaftarAbsensi";     // IMPORT BARU
 import DashboardStats from "@/components/DashboardStats";
 
 import { auth } from "@/lib/firebase";
@@ -17,11 +19,16 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loadingAuth, setLoadingAuth] = useState(false);
-  const [activeTab, setActiveTab] = useState("buku");
+  const [tampilkanLogin, setTampilkanLogin] = useState(false);
+  
+  // Tab dipisah: satu untuk Warga/Pengunjung, satu untuk Admin
+  const [activeTabPublic, setActiveTabPublic] = useState("katalog"); // 'katalog' atau 'absen'
+  const [activeTabAdmin, setActiveTabAdmin] = useState("buku");      // 'buku', 'anggota', 'sirkulasi', 'absen'
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setAdmin(user);
+      if (user) setTampilkanLogin(false);
     });
     return () => unsubscribe();
   }, []);
@@ -41,103 +48,91 @@ export default function Home() {
 
   const handleLogout = async () => {
     await signOut(auth);
-    setActiveTab("buku");
+    setActiveTabAdmin("buku");
+    setActiveTabPublic("katalog");
   };
 
   return (
     <main className="min-h-screen bg-[#f8f9fa] p-4 md:p-8 flex flex-col items-center print:bg-white print:p-0">
-      
-      {/* =========================================================================
-          WRAPPER NON-CETAK
-          ========================================================================= */}
       <div className="w-full max-w-4xl flex flex-col items-center print:hidden">
         
-        {/* HEADER UTAMA DENGAN LOGO ASLI */}
+        {/* HEADER UTAMA */}
         <div className="w-full flex flex-col md:flex-row justify-between items-center mb-6 bg-[#8e0004] p-5 md:p-6 rounded-2xl shadow-lg border-b-[6px] border-[#fec700] relative overflow-hidden gap-4">
-          
-          {/* BRANDING DENGAN LOGO */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 text-center md:text-left">
-            {/* Kartu Badge Putih untuk Logo */}
+          <div className="relative z-10 flex items-center gap-4 text-center md:text-left">
             <div className="bg-white py-2 px-3 rounded-xl shadow-md border-b-4 border-gray-200 flex-shrink-0">
-              <img 
-                src="/logo.jpg" 
-                alt="Logo Rangkang Pustaka" 
-                className="h-14 sm:h-16 w-auto object-contain" 
-              />
+              <img src="/logo.jpg" alt="Logo Rangkang Pustaka" className="h-14 sm:h-16 w-auto object-contain" />
             </div>
-            
-            {/* Teks Subtitle */}
-            <div className="hidden sm:block">
-              <p className="text-white text-xs font-bold tracking-[0.2em] uppercase mt-1 opacity-95">
-                Taman Baca Masyarakat
-              </p>
-              <p className="text-[#fec700] text-[10px] font-black tracking-widest uppercase mt-0.5">
-                Nisam, Aceh Utara
-              </p>
+            <div className="hidden sm:block text-left">
+              <p className="text-white text-xs font-bold tracking-[0.2em] uppercase opacity-95">Taman Baca Masyarakat</p>
+              <p className="text-[#fec700] text-[10px] font-black tracking-widest uppercase mt-0.5">Nisam, Aceh Utara</p>
             </div>
           </div>
 
-          {/* AREA AUTH / LOGIN ADMIN */}
-          <div className="relative z-10 w-full md:w-auto">
+          <div className="relative z-10 w-full md:w-auto flex justify-center md:justify-end">
             {admin ? (
-              <div className="flex items-center justify-center md:justify-end gap-4 bg-white/10 p-2 rounded-xl backdrop-blur-sm">
-                <span className="text-sm font-bold text-white uppercase tracking-wider pl-2">🔑 Pustakawan</span>
-                <button onClick={handleLogout} className="px-4 py-2 bg-[#fec700] text-[#8e0004] font-extrabold rounded-lg hover:bg-yellow-400 transition-all text-xs shadow-md">
-                  LOGOUT
-                </button>
+              <div className="flex items-center gap-4 bg-white/10 p-2 rounded-xl backdrop-blur-sm">
+                <span className="text-xs font-bold text-white uppercase tracking-wider pl-2">🔑 Pustakawan</span>
+                <button onClick={handleLogout} className="px-4 py-2 bg-[#fec700] text-[#8e0004] font-extrabold rounded-lg hover:bg-yellow-400 transition-all text-xs shadow-md">LOGOUT</button>
               </div>
             ) : (
-              <form onSubmit={handleLogin} className="flex flex-col sm:flex-row gap-2 bg-white/10 p-2.5 rounded-xl backdrop-blur-sm">
-                <input 
-                  type="email" placeholder="Email Pustakawan" value={email} onChange={(e) => setEmail(e.target.value)} 
-                  className="bg-white p-2.5 rounded-lg text-sm text-gray-900 w-full sm:w-44 focus:ring-2 focus:ring-[#fec700] outline-none placeholder-gray-500 font-medium shadow-inner" required 
-                />
-                <input 
-                  type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} 
-                  className="bg-white p-2.5 rounded-lg text-sm text-gray-900 w-full sm:w-36 focus:ring-2 focus:ring-[#fec700] outline-none placeholder-gray-500 font-medium shadow-inner" required 
-                />
-                <button type="submit" disabled={loadingAuth} className="px-5 py-2.5 bg-[#fec700] text-[#8e0004] font-black rounded-lg hover:bg-yellow-400 text-sm transition-all tracking-wider uppercase shadow-md">
-                  {loadingAuth ? "..." : "LOGIN"}
-                </button>
-              </form>
+              <button onClick={() => setTampilkanLogin(!tampilkanLogin)} className="px-4 py-2 bg-white/10 text-white font-bold rounded-lg border border-white/20 hover:bg-white hover:text-[#8e0004] transition-all text-xs tracking-wider">
+                {tampilkanLogin ? "✖ TUTUP LOGIN" : "🔒 PUSTAKAWAN"}
+              </button>
             )}
           </div>
         </div>
 
-        {/* DASHBOARD STATISTIK */}
-        {admin && <DashboardStats />}
-
-        {/* NAVIGASI TAB UTAMA */}
-        {admin && (
-          <div className="w-full flex flex-col sm:flex-row gap-3 mb-8">
-            <button onClick={() => setActiveTab("buku")} className={`flex-1 py-3.5 text-center text-sm font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 border-2 ${activeTab === "buku" ? "bg-[#8e0004] text-white border-[#8e0004] shadow-md" : "bg-white text-[#8e0004] border-gray-200 hover:border-[#8e0004]"}`}>
-              📚 Katalog Koleksi
-            </button>
-            <button onClick={() => setActiveTab("anggota")} className={`flex-1 py-3.5 text-center text-sm font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 border-2 ${activeTab === "anggota" ? "bg-[#8e0004] text-white border-[#8e0004] shadow-md" : "bg-white text-[#8e0004] border-gray-200 hover:border-[#8e0004]"}`}>
-              👥 Manajemen Anggota
-            </button>
-            <button onClick={() => setActiveTab("sirkulasi")} className={`flex-1 py-3.5 text-center text-sm font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 border-2 ${activeTab === "sirkulasi" ? "bg-[#8e0004] text-white border-[#8e0004] shadow-md" : "bg-white text-[#8e0004] border-gray-200 hover:border-[#8e0004]"}`}>
-              🔄 Sirkulasi Peminjaman
-            </button>
+        {/* LACI LOGIN ADMIN */}
+        {!admin && tampilkanLogin && (
+          <div className="w-full bg-white border-2 border-[#8e0004] p-5 rounded-2xl shadow-md mb-6 animate-in slide-in-from-top duration-300">
+            <h3 className="text-sm font-black text-[#8e0004] uppercase tracking-wider mb-3">Masuk Sistem Internal</h3>
+            <form onSubmit={handleLogin} className="flex flex-col sm:flex-row gap-3">
+              <input type="email" placeholder="Email Akun Pustakawan" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-gray-50 border p-3 rounded-xl text-sm flex-1 focus:ring-2 focus:ring-[#8e0004] outline-none" required />
+              <input type="password" placeholder="Kata Sandi / Password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-gray-50 border p-3 rounded-xl text-sm flex-1 focus:ring-2 focus:ring-[#8e0004] outline-none" required />
+              <button type="submit" disabled={loadingAuth} className="px-6 py-3 bg-[#8e0004] text-white font-black rounded-xl hover:bg-red-800 text-sm transition-all uppercase shadow-md">{loadingAuth ? "Proses..." : "VERIFIKASI"}</button>
+            </form>
           </div>
         )}
 
-        {/* CONTAINER FORM INPUT */}
-        <div className="w-full flex justify-center mb-8">
-          {(activeTab === "buku" || !admin) && admin && <InputBuku />}
-          {admin && activeTab === "anggota" && <InputAnggota />}
-          {admin && activeTab === "sirkulasi" && <InputPeminjaman />}
-        </div>
+        {/* MENU NAVIGASI PUBLIK (JIKA BUKAN ADMIN) */}
+        {!admin && (
+          <div className="w-full flex gap-2 mb-6 bg-gray-200/50 p-1.5 rounded-xl">
+            <button onClick={() => setActiveTabPublic("katalog")} className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTabPublic === "katalog" ? "bg-white text-[#8e0004] shadow-sm" : "text-gray-600 hover:text-gray-900"}`}>📚 Cari Buku</button>
+            <button onClick={() => setActiveTabPublic("absen")} className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTabPublic === "absen" ? "bg-white text-[#8e0004] shadow-sm" : "text-gray-600 hover:text-gray-900"}`}>📝 Isi Buku Tamu</button>
+          </div>
+        )}
 
+        {/* TAMPILAN KONTEN UNTUK PUBLIK */}
+        {!admin && activeTabPublic === "absen" && <InputAbsensi />}
+        
+        {/* DASHBOARD STATISTIK ADMIN */}
+        {admin && <DashboardStats />}
+
+        {/* MENU NAVIGASI ADMIN */}
+        {admin && (
+          <div className="w-full flex flex-col sm:flex-row gap-2 mb-8 flex-wrap">
+            <button onClick={() => setActiveTabAdmin("buku")} className={`flex-1 py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "buku" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📚 Katalog</button>
+            <button onClick={() => setActiveTabAdmin("anggota")} className={`flex-1 py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "anggota" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>👥 Anggota</button>
+            <button onClick={() => setActiveTabAdmin("sirkulasi")} className={`flex-1 py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "sirkulasi" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>🔄 Sirkulasi</button>
+            <button onClick={() => setActiveTabAdmin("absen")} className={`flex-1 py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "absen" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📝 Buku Tamu</button>
+          </div>
+        )}
+
+        {/* FORM INPUT ADMIN */}
+        <div className="w-full flex justify-center mb-8">
+          {admin && activeTabAdmin === "buku" && <InputBuku />}
+          {admin && activeTabAdmin === "anggota" && <InputAnggota />}
+          {admin && activeTabAdmin === "sirkulasi" && <InputPeminjaman />}
+        </div>
       </div> 
 
-      {/* =========================================================================
-          WRAPPER LIST UTAMA
-          ========================================================================= */}
-      <div className="w-full flex justify-center">
-        {(activeTab === "buku" || !admin) && <DaftarBuku isAdmin={!!admin} />}
-        {admin && activeTab === "anggota" && <DaftarAnggota />}
-        {admin && activeTab === "sirkulasi" && <DaftarPeminjaman />}
+      {/* RENDER LIST DATA */}
+      <div className="w-full max-w-4xl flex justify-center">
+        {(!admin && activeTabPublic === "katalog") && <DaftarBuku isAdmin={false} />}
+        {admin && activeTabAdmin === "buku" && <DaftarBuku isAdmin={true} />}
+        {admin && activeTabAdmin === "anggota" && <DaftarAnggota />}
+        {admin && activeTabAdmin === "sirkulasi" && <DaftarPeminjaman />}
+        {admin && activeTabAdmin === "absen" && <DaftarAbsensi />}
       </div>
 
     </main>
