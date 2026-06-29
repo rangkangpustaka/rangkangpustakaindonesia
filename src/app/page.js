@@ -5,9 +5,11 @@ import InputBuku from "@/components/InputBuku";
 import DaftarBuku from "@/components/DaftarBuku";
 import InputAnggota from "@/components/InputAnggota";
 import DaftarAnggota from "@/components/DaftarAnggota";
-// IMPORT KOMPONEN SIRKULASI BARU
 import InputPeminjaman from "@/components/InputPeminjaman"; 
 import DaftarPeminjaman from "@/components/DaftarPeminjaman"; 
+
+// 1. IMPORT DASHBOARD STATS DI SINI
+import DashboardStats from "@/components/DashboardStats";
 
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
@@ -18,7 +20,6 @@ export default function Home() {
   const [password, setPassword] = useState("");
   const [loadingAuth, setLoadingAuth] = useState(false);
   
-  // STATE TAB: "buku", "anggota", atau "sirkulasi"
   const [activeTab, setActiveTab] = useState("buku");
 
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 p-4 md:p-8 flex flex-col items-center">
       
-      {/* HEADER */}
+      {/* HEADER UTAMA */}
       <div className="w-full max-w-4xl flex flex-col md:flex-row justify-between items-center mb-6 bg-white p-6 rounded-xl shadow-sm border">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 mb-1">Rangkang Pustaka</h1>
@@ -72,7 +73,10 @@ export default function Home() {
         </div>
       </div>
 
-      {/* NAVIGASI 3 TAB UNTUK ADMIN */}
+      {/* 2. TAMPILKAN DASHBOARD STATS (Hanya untuk Admin) */}
+      {admin && <DashboardStats />}
+
+      {/* NAVIGASI TAB */}
       {admin && (
         <div className="w-full max-w-4xl flex flex-col sm:flex-row gap-2 mb-8 bg-white rounded-lg shadow-sm border p-1">
           <button onClick={() => setActiveTab("buku")} className={`flex-1 py-2 text-center font-bold rounded-md transition-all ${activeTab === "buku" ? "bg-blue-600 text-white shadow" : "text-gray-600 hover:bg-gray-100"}`}>
@@ -87,7 +91,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* TAB 1: BUKU */}
+      {/* RENDER KONTEN TAB BAWAHNYA TETAP SAMA */}
       {(activeTab === "buku" || !admin) && (
         <>
           {admin && <div className="w-full max-w-2xl mb-8"><InputBuku /></div>}
@@ -95,7 +99,6 @@ export default function Home() {
         </>
       )}
 
-      {/* TAB 2: ANGGOTA */}
       {admin && activeTab === "anggota" && (
         <>
           <div className="w-full max-w-2xl mb-8"><InputAnggota /></div>
@@ -103,7 +106,6 @@ export default function Home() {
         </>
       )}
 
-      {/* TAB 3: SIRKULASI */}
       {admin && activeTab === "sirkulasi" && (
         <>
           <div className="w-full max-w-2xl mb-8"><InputPeminjaman /></div>
