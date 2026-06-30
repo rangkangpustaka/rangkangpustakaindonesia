@@ -9,10 +9,8 @@ export default function DaftarAnggota() {
   const [loading, setLoading] = useState(true);
   const [kataKunci, setKataKunci] = useState("");
   
-  // State untuk fitur Cetak Kartu
   const [anggotaTerpilih, setAnggotaTerpilih] = useState([]);
 
-  // State untuk fitur Edit
   const [editId, setEditId] = useState(null);
   const [editNama, setEditNama] = useState("");
   const [editKontak, setEditKontak] = useState("");
@@ -86,7 +84,7 @@ export default function DaftarAnggota() {
   return (
     <div className="w-full mt-4 print:mt-0">
       
-      {/* TAMPILAN DASHBOARD WEB (Otomatis Sembunyi Saat Dicetak) */}
+      {/* TAMPILAN DASHBOARD WEB (Sembunyi Saat Cetak) */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 print:hidden">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4 gap-4">
           <div>
@@ -150,53 +148,51 @@ export default function DaftarAnggota() {
         )}
       </div>
 
-      {/* TAMPILAN KHUSUS PRINT KARTU ID (Tersembunyi di Web, Muncul Otomatis Saat Ctrl+P) */}
+      {/* TAMPILAN KHUSUS PRINT KARTU ID (Dioptimalkan Warna & Kontrasnya) */}
       <div className="hidden print:flex flex-wrap gap-4 justify-start items-start">
         {anggotaDifilter.filter(a => anggotaTerpilih.includes(a.id)).map((item) => (
-          <div key={`card-${item.id}`} className="relative w-[8.5cm] h-[5.4cm] border-[2px] border-black bg-white rounded-lg overflow-hidden flex flex-col font-sans break-inside-avoid shadow-sm">
+          <div key={`card-${item.id}`} className="relative w-[8.5cm] h-[5.4cm] border-[2px] border-black bg-white rounded-lg overflow-hidden flex flex-col font-sans break-inside-avoid shadow-sm print-exact-colors" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
             
             {/* Header Kartu Marun */}
-            <div className="bg-[#8e0004] h-[1.6cm] w-full flex items-center px-2 gap-2 border-b-4 border-[#fec700]">
-              <div className="bg-white h-10 w-10 p-0.5 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden shadow">
-                <img src="/logo.jpg" alt="Logo" className="h-full w-full object-contain" />
+            <div className="h-[1.6cm] w-full flex items-center px-2 gap-2 border-b-4 border-[#fec700]" style={{ backgroundColor: '#8e0004' }}>
+              {/* === PERBAIKAN LOGO: Dibuat overflow-hidden agar terpotong bulat sempurna === */}
+              <div className="h-11 w-11 bg-white rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center">
+                <img src="/logo.jpg" alt="Logo" className="h-full w-full object-contain p-0.5 bg-white" />
               </div>
-              <div className="text-white flex-1 text-center pr-4">
-                <p className="text-[9px] font-bold tracking-widest uppercase mb-0.5 opacity-90">KARTU ANGGOTA PERPUSTAKAAN</p>
-                <p className="text-[12px] font-black uppercase leading-tight tracking-wide">Rangkang Pustaka</p>
+              <div className="flex-1 text-center pr-4">
+                <p className="text-[9px] font-bold tracking-widest uppercase mb-0.5" style={{ color: '#ffffff', opacity: 0.9 }}>KARTU ANGGOTA PERPUSTAKAAN</p>
+                <p className="text-[12px] font-black uppercase leading-tight tracking-wide" style={{ color: '#ffffff' }}>Rangkang Pustaka</p>
               </div>
             </div>
 
             {/* Badan Kartu */}
             <div className="flex-1 flex p-2 bg-gradient-to-br from-white to-gray-50">
-              
               {/* Sisi Kiri: Identitas */}
               <div className="flex-1 flex flex-col justify-center gap-1.5">
                 <div>
-                  <p className="text-[7px] font-bold text-gray-400 uppercase tracking-wider">Nama Anggota</p>
-                  <p className="text-[12px] font-black text-gray-900 leading-tight line-clamp-1">{item.nama}</p>
+                  <p className="text-[7px] font-extrabold uppercase tracking-wider" style={{ color: '#6b7280' }}>Nama Anggota</p>
+                  <p className="text-[12px] font-black leading-tight line-clamp-1" style={{ color: '#111827' }}>{item.nama}</p>
                 </div>
                 <div>
-                  <p className="text-[7px] font-bold text-gray-400 uppercase tracking-wider">No. Induk Anggota (NIA)</p>
-                  <p className="text-[11px] font-bold text-[#8e0004] tracking-wide">{item.nomorAnggota || "MEMBER LAMA"}</p>
+                  <p className="text-[7px] font-extrabold uppercase tracking-wider" style={{ color: '#6b7280' }}>No. Induk Anggota (NIA)</p>
+                  <p className="text-[11px] font-bold tracking-wide" style={{ color: '#8e0004' }}>{item.nomorAnggota || "MEMBER LAMA"}</p>
                 </div>
                 <div>
-                  <p className="text-[7px] font-bold text-gray-400 uppercase tracking-wider">Alamat / Instansi</p>
-                  <p className="text-[9px] font-bold text-gray-700 line-clamp-2 leading-tight">{item.alamat}</p>
+                  <p className="text-[7px] font-extrabold uppercase tracking-wider" style={{ color: '#6b7280' }}>Alamat / Instansi</p>
+                  <p className="text-[9px] font-bold line-clamp-2 leading-tight" style={{ color: '#374151' }}>{item.alamat}</p>
                 </div>
               </div>
 
-              {/* Sisi Kanan: QR Code Enkripsi Pintar */}
-              <div className="w-[2.2cm] h-full flex flex-col items-center justify-center border-l border-dashed border-gray-300 pl-2 flex-shrink-0">
-                <div className="w-[1.8cm] h-[1.8cm] bg-white border border-gray-200 p-0.5 rounded-md shadow-sm">
+              {/* Sisi Kanan: QR Code */}
+              <div className="w-[2.2cm] h-full flex flex-col items-center justify-center border-l-2 border-dashed border-gray-300 pl-2 flex-shrink-0">
+                <div className="w-[1.8cm] h-[1.8cm] bg-white border-2 border-gray-200 p-0.5 rounded-md shadow-sm">
                   <img 
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`ANGGOTA|${item.nomorAnggota || "LAMA"}|${item.nama}|${item.alamat}`)}`} 
-                    alt="QR Code Anggota" 
-                    className="w-full h-full object-contain"
+                    alt="QR Code Anggota" className="w-full h-full object-contain"
                   />
                 </div>
-                <p className="text-[6px] text-center mt-1 text-gray-500 font-extrabold uppercase leading-tight">Scan Untuk<br/>Akses Pustaka</p>
+                <p className="text-[6px] text-center mt-1 font-black uppercase leading-tight" style={{ color: '#6b7280' }}>Scan Untuk<br/>Akses Pustaka</p>
               </div>
-
             </div>
           </div>
         ))}

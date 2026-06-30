@@ -87,7 +87,6 @@ export default function DaftarBuku({ isAdmin }) {
   };
 
   const handleImportExcel = async (e) => {
-    // (Fungsi impor excel)
     const file = e.target.files[0];
     if (!file) return;
     setIsImporting(true);
@@ -240,34 +239,40 @@ export default function DaftarBuku({ isAdmin }) {
         )}
       </div>
 
-      {/* --- LAYER CETAK STIKER LABEL + QR CODE (Hanya Muncul Saat Print) --- */}
+      {/* --- LAYER CETAK STIKER LABEL FISIK (Warna Hitam Dipertegas) --- */}
       <div className="hidden print:flex flex-wrap gap-4 justify-start items-start">
         {bukuDifilter.filter(b => bukuTerpilih.includes(b.id)).map((item) => (
-          <div key={`label-${item.id}`} className="w-[9cm] h-[4.5cm] border-[3px] border-black flex flex-col bg-white text-black font-sans break-inside-avoid overflow-hidden">
+          <div key={`label-${item.id}`} className="w-[9cm] h-[4.5cm] border-[3px] border-black flex flex-col bg-white font-sans break-inside-avoid overflow-hidden" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact', color: 'black' }}>
+            
+            {/* Sisi Atas: Logo, Judul Yayasan, & QR Buku */}
             <div className="flex border-b-[3px] border-black h-[45%]">
               <div className="w-[25%] border-r-[3px] border-black flex items-center justify-center p-1 bg-white">
-                <img src="/logo.jpg" alt="Logo Rangkang" className="max-h-full max-w-full object-contain grayscale" />
+                <img src="/logo.jpg" alt="Logo Rangkang" className="max-h-full max-w-full object-contain grayscale" style={{ filter: 'grayscale(100%) contrast(1.2)' }} />
               </div>
               <div className="w-[50%] border-r-[3px] border-black flex flex-col items-center justify-center text-center px-1">
-                <p className="text-[9px] font-medium leading-tight uppercase tracking-wider">Taman Baca Masyarakat</p>
-                <p className="text-[12px] font-black leading-tight mt-0.5 uppercase tracking-wide">Rangkang Pustaka</p>
+                <p className="text-[9px] font-bold leading-tight uppercase tracking-wider text-black">Taman Baca Masyarakat</p>
+                <p className="text-[12px] font-black leading-tight mt-0.5 uppercase tracking-wide text-black">Rangkang Pustaka</p>
               </div>
               <div className="w-[25%] flex items-center justify-center p-0.5 bg-white flex-shrink-0">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`BUKU|${item.id}`)}`} 
-                  alt="QR Buku" className="w-full h-full object-contain" 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&margin=1&data=${encodeURIComponent(`BUKU|${item.id}`)}`} 
+                  alt="QR Buku"
+                  className="w-full h-full object-contain" 
                 />
               </div>
             </div>
+
+            {/* Sisi Bawah: Lembar Teks Klasifikasi Buku */}
             <div className="flex h-[55%] text-[11px]">
-              <div className="w-[35%] border-r-[3px] border-black px-1.5 py-1 flex flex-col justify-between font-medium text-gray-700">
+              <div className="w-[35%] border-r-[3px] border-black px-1.5 py-1 flex flex-col justify-between font-bold text-black">
                 <p>No. Registrasi</p><p>Tahun Terbit</p><p>Asal / Sumber</p><p>Kategori</p>
               </div>
-              <div className="w-[65%] px-1.5 py-1 flex flex-col justify-between font-bold text-black">
+              <div className="w-[65%] px-1.5 py-1 flex flex-col justify-between font-black text-black">
                 <p className="truncate">: {item.noBuku}</p><p className="truncate">: {item.tahun || "-"}</p>
                 <p className="truncate">: {item.sumber || "-"}</p><p className="truncate">: {item.kategori}</p>
               </div>
             </div>
+
           </div>
         ))}
       </div>
