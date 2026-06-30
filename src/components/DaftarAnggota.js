@@ -8,18 +8,18 @@ export default function DaftarAnggota() {
   const [anggota, setAnggota] = useState([]);
   const [loading, setLoading] = useState(true);
   const [kataKunci, setKataKunci] = useState("");
+  
+  // State untuk fitur Cetak Kartu
+  const [anggotaTerpilih, setAnggotaTerpilih] = useState([]);
 
-  // State untuk Inline Editing
+  // State untuk fitur Edit
   const [editId, setEditId] = useState(null);
   const [editNama, setEditNama] = useState("");
-  const [editNoAnggota, setEditNoAnggota] = useState("");
-  const [editNoHp, setEditNoHp] = useState("");
-  const [editInstansi, setEditInstansi] = useState("");
-  const [editStatus, setEditStatus] = useState("Aktif");
+  const [editKontak, setEditKontak] = useState("");
+  const [editAlamat, setEditAlamat] = useState("");
 
   useEffect(() => {
-    // Mengambil data anggota, diurutkan dari yang terbaru mendaftar
-    const q = query(collection(db, "anggota"), orderBy("bergabungPada", "desc"));
+    const q = query(collection(db, "anggota"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const dataAnggota = [];
       querySnapshot.forEach((document) => {
@@ -27,128 +27,181 @@ export default function DaftarAnggota() {
       });
       setAnggota(dataAnggota);
       setLoading(false);
-    }, (error) => {
-      console.error("Gagal mengambil data anggota: ", error);
-      setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  const handleDelete = async (id, namaAnggota) => {
-    const konfirmasi = window.confirm(`Hapus anggota "${namaAnggota}" dari sistem?`);
-    if (konfirmasi) {
-      try {
-        await deleteDoc(doc(db, "anggota", id));
-      } catch (error) {
-        alert("Gagal menghapus: " + error.message);
-      }
+  const handleDelete = async (id, nama) => {
+    if (window.confirm(`Hapus anggota "${nama}" dari database?`)) {
+      await deleteDoc(doc(db, "anggota", id));
+      setAnggotaTerpilih(prev => prev.filter(aId => aId !== id));
     }
   };
 
   const handleEditClick = (item) => {
-    setEditId(item.id);
-    setEditNama(item.nama);
-    setEditNoAnggota(item.noAnggota);
-    setEditNoHp(item.noHp || "");
-    setEditInstansi(item.instansi || "");
-    setEditStatus(item.status || "Aktif");
+    setEditId(item.id); 
+    setEditNama(item.nama); 
+    setEditKontak(item.kontak || ""); 
+    setEditAlamat(item.alamat || "");
   };
 
   const handleUpdate = async (id) => {
     try {
-      await updateDoc(doc(db, "anggota", id), {
-        nama: editNama,
-        noAnggota: editNoAnggota,
-        noHp: editNoHp,
-        instansi: editInstansi,
-        status: editStatus,
+      await updateDoc(doc(db, "anggota", id), { 
+        nama: editNama, 
+        kontak: editKontak, 
+        alamat: editAlamat 
       });
       setEditId(null);
     } catch (error) {
-      alert("Gagal mengupdate: " + error.message);
+      alert("Gagal memperbarui data anggota: " + error.message);
     }
+  };
+
+  const handleTogglePilih = (id) => {
+    setAnggotaTerpilih(prev => prev.includes(id) ? prev.filter(aId => aId !== id) : [...prev, id]);
+  };
+
+  const handlePilihSemua = () => {
+    if (anggotaTerpilih.length === anggotaDifilter.length) setAnggotaTerpilih([]); 
+    else setAnggotaTerpilih(anggotaDifilter.map(a => a.id)); 
+  };
+
+  const handleCetakKartu = () => {
+    if (anggotaTerpilih.length === 0) return alert("Centang minimal 1 anggota untuk dicetak kartunya!");
+    window.print();
   };
 
   const anggotaDifilter = anggota.filter((item) => {
     const keyword = kataKunci.toLowerCase();
     return (
       item.nama?.toLowerCase().includes(keyword) || 
-      item.noAnggota?.toLowerCase().includes(keyword)
+      item.nomorAnggota?.toLowerCase().includes(keyword) ||
+      item.alamat?.toLowerCase().includes(keyword)
     );
   });
 
-  if (loading) return <div className="p-4 text-center animate-pulse">Memuat data anggota...</div>;
+  if (loading) return <div className="p-4 text-center font-bold text-gray-600 animate-pulse">Memuat data anggota...</div>;
 
   return (
-    <div className="mt-8 max-w-4xl w-full px-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4 gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Direktori Anggota</h2>
-          <p className="text-sm text-gray-500 mt-1">Total: {anggota.length} Orang</p>
-        </div>
-        <div className="w-full sm:w-72">
-          <input 
-            type="text"
-            placeholder="Cari nama atau nomor anggota..."
-            value={kataKunci}
-            onChange={(e) => setKataKunci(e.target.value)}
-            className="w-full p-2.5 pl-4 border border-gray-300 rounded-full text-sm text-gray-800 bg-white focus:ring-2 focus:ring-green-500 focus:outline-none"
-          />
-        </div>
-      </div>
+    <div className="w-full mt-4 print:mt-0">
       
-      {anggotaDifilter.length === 0 ? (
-        <p className="text-center py-10 text-gray-500 italic">Belum ada data anggota.</p>
-      ) : (
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-          {anggotaDifilter.map((item) => (
-            <div key={item.id} className="p-4 border-l-4 border-l-green-500 rounded-r-xl shadow-sm bg-white hover:shadow-md transition-all flex flex-col gap-2">
-              
-              {editId === item.id ? (
-                // --- MODE EDIT ---
-                <div className="flex flex-col gap-2 text-sm text-black">
-                  <input className="p-1.5 border rounded" placeholder="Nama" value={editNama} onChange={(e) => setEditNama(e.target.value)} />
-                  <input className="p-1.5 border rounded" placeholder="No Anggota" value={editNoAnggota} onChange={(e) => setEditNoAnggota(e.target.value)} />
-                  <input className="p-1.5 border rounded" placeholder="No HP" value={editNoHp} onChange={(e) => setEditNoHp(e.target.value)} />
-                  <input className="p-1.5 border rounded" placeholder="Instansi" value={editInstansi} onChange={(e) => setEditInstansi(e.target.value)} />
-                  <select className="p-1.5 border rounded" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
-                    <option value="Aktif">Aktif</option>
-                    <option value="Non-Aktif">Non-Aktif</option>
-                  </select>
-                  <div className="flex gap-2 justify-end mt-1">
-                    <button onClick={() => setEditId(null)} className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Batal</button>
-                    <button onClick={() => handleUpdate(item.id)} className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">Simpan</button>
-                  </div>
-                </div>
-              ) : (
-                // --- MODE TAMPIL NORMAL ---
-                <>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-bold text-lg text-gray-900">{item.nama}</h3>
-                      <p className="text-sm font-semibold text-gray-600 font-mono">{item.noAnggota}</p>
-                    </div>
-                    <span className={`text-xs px-2 py-1 rounded font-bold ${item.status === 'Aktif' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {item.status}
-                    </span>
-                  </div>
-                  
-                  <div className="text-sm text-gray-500 mt-2">
-                    <p>📞 {item.noHp}</p>
-                    <p>🏫 {item.instansi}</p>
-                  </div>
-
-                  <div className="flex gap-2 justify-end mt-3 pt-3 border-t">
-                    <button onClick={() => handleEditClick(item)} className="px-3 py-1 bg-amber-50 text-amber-700 rounded text-xs font-bold hover:bg-amber-100">Edit</button>
-                    <button onClick={() => handleDelete(item.id, item.nama)} className="px-3 py-1 bg-red-50 text-red-700 rounded text-xs font-bold hover:bg-red-100">Hapus</button>
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
+      {/* TAMPILAN DASHBOARD WEB (Otomatis Sembunyi Saat Dicetak) */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 print:hidden">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4 gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">Manajemen Anggota</h2>
+            <p className="text-sm text-gray-500">Total: {anggota.length} Anggota Terdaftar</p>
+          </div>
+          <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+            <input type="text" placeholder="Cari nama, NIA, alamat..." value={kataKunci} onChange={(e) => setKataKunci(e.target.value)} className="w-full sm:w-56 p-2.5 border-2 border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:border-[#8e0004] focus:bg-white transition-all" />
+            <button onClick={handleCetakKartu} className="w-full sm:w-auto px-4 py-2.5 bg-gray-800 text-white font-bold rounded-xl hover:bg-gray-900 text-sm shadow-sm transition-all text-center">🪪 Cetak Kartu ({anggotaTerpilih.length})</button>
+          </div>
         </div>
-      )}
+
+        {anggotaDifilter.length > 0 && (
+          <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center">
+            <input type="checkbox" id="pilihSemuaAnggota" className="w-5 h-5 cursor-pointer accent-indigo-600 mr-2" checked={anggotaDifilter.length > 0 && anggotaTerpilih.length === anggotaDifilter.length} onChange={handlePilihSemua} />
+            <label htmlFor="pilihSemuaAnggota" className="text-sm font-bold text-indigo-800 cursor-pointer">Pilih Semua Anggota Terfilter</label>
+          </div>
+        )}
+
+        {anggotaDifilter.length === 0 ? (
+          <p className="text-center py-8 text-gray-500 italic">Data anggota tidak ditemukan.</p>
+        ) : (
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {anggotaDifilter.map((item) => (
+              <div key={item.id} className={`p-4 border-2 rounded-2xl shadow-sm relative transition-all ${anggotaTerpilih.includes(item.id) ? 'bg-indigo-50/50 border-indigo-400' : 'bg-white border-gray-100 hover:border-gray-300'}`}>
+                
+                <div className="absolute top-4 right-4 z-10">
+                  <input type="checkbox" className="w-5 h-5 cursor-pointer accent-indigo-600" checked={anggotaTerpilih.includes(item.id)} onChange={() => handleTogglePilih(item.id)} />
+                </div>
+
+                {editId === item.id ? (
+                  <div className="flex flex-col gap-2 text-xs">
+                    <input className="p-2 border rounded-lg bg-gray-100 font-bold text-[#8e0004]" disabled value={item.nomorAnggota || "MEMBER LAMA"} />
+                    <input className="p-2 border rounded-lg bg-gray-50 outline-none focus:border-[#8e0004]" placeholder="Nama" value={editNama} onChange={(e) => setEditNama(e.target.value)} />
+                    <input className="p-2 border rounded-lg bg-gray-50 outline-none focus:border-[#8e0004]" placeholder="Alamat/Instansi" value={editAlamat} onChange={(e) => setEditAlamat(e.target.value)} />
+                    <input className="p-2 border rounded-lg bg-gray-50 outline-none focus:border-[#8e0004]" placeholder="Kontak" value={editKontak} onChange={(e) => setEditKontak(e.target.value)} />
+                    <div className="flex gap-2 justify-end mt-2">
+                      <button onClick={() => setEditId(null)} className="px-3 py-1.5 bg-gray-200 font-bold rounded-lg hover:bg-gray-300">Batal</button>
+                      <button onClick={() => handleUpdate(item.id)} className="px-3 py-1.5 bg-green-600 font-bold text-white rounded-lg hover:bg-green-700">Simpan</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pr-8">
+                    <span className="text-[10px] font-extrabold bg-[#8e0004] text-white px-2 py-0.5 rounded-md tracking-wider">
+                      {item.nomorAnggota || "MEMBER LAMA"}
+                    </span>
+                    <h3 className="font-bold text-gray-900 text-lg mt-1 line-clamp-1">{item.nama}</h3>
+                    <p className="text-xs text-gray-500 font-medium mt-1">📍 {item.alamat}</p>
+                    <p className="text-xs text-gray-500 font-medium">📞 {item.kontak}</p>
+                    <p className="text-[10px] text-gray-400 mt-2 font-medium">Bergabung: {item.tanggalDaftar || "-"}</p>
+                    
+                    <div className="flex gap-1.5 mt-3">
+                      <button onClick={() => handleEditClick(item)} className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold rounded-lg hover:bg-amber-100 transition-all">Edit</button>
+                      <button onClick={() => handleDelete(item.id, item.nama)} className="px-3 py-1 bg-red-50 text-red-700 border border-red-200 text-xs font-bold rounded-lg hover:bg-red-100 transition-all">Hapus</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* TAMPILAN KHUSUS PRINT KARTU ID (Tersembunyi di Web, Muncul Otomatis Saat Ctrl+P) */}
+      <div className="hidden print:flex flex-wrap gap-4 justify-start items-start">
+        {anggotaDifilter.filter(a => anggotaTerpilih.includes(a.id)).map((item) => (
+          <div key={`card-${item.id}`} className="relative w-[8.5cm] h-[5.4cm] border-[2px] border-black bg-white rounded-lg overflow-hidden flex flex-col font-sans break-inside-avoid shadow-sm">
+            
+            {/* Header Kartu Marun */}
+            <div className="bg-[#8e0004] h-[1.6cm] w-full flex items-center px-2 gap-2 border-b-4 border-[#fec700]">
+              <div className="bg-white h-10 w-10 p-0.5 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden shadow">
+                <img src="/logo.jpg" alt="Logo" className="h-full w-full object-contain" />
+              </div>
+              <div className="text-white flex-1 text-center pr-4">
+                <p className="text-[9px] font-bold tracking-widest uppercase mb-0.5 opacity-90">KARTU ANGGOTA PERPUSTAKAAN</p>
+                <p className="text-[12px] font-black uppercase leading-tight tracking-wide">Rangkang Pustaka</p>
+              </div>
+            </div>
+
+            {/* Badan Kartu */}
+            <div className="flex-1 flex p-2 bg-gradient-to-br from-white to-gray-50">
+              
+              {/* Sisi Kiri: Identitas */}
+              <div className="flex-1 flex flex-col justify-center gap-1.5">
+                <div>
+                  <p className="text-[7px] font-bold text-gray-400 uppercase tracking-wider">Nama Anggota</p>
+                  <p className="text-[12px] font-black text-gray-900 leading-tight line-clamp-1">{item.nama}</p>
+                </div>
+                <div>
+                  <p className="text-[7px] font-bold text-gray-400 uppercase tracking-wider">No. Induk Anggota (NIA)</p>
+                  <p className="text-[11px] font-bold text-[#8e0004] tracking-wide">{item.nomorAnggota || "MEMBER LAMA"}</p>
+                </div>
+                <div>
+                  <p className="text-[7px] font-bold text-gray-400 uppercase tracking-wider">Alamat / Instansi</p>
+                  <p className="text-[9px] font-bold text-gray-700 line-clamp-2 leading-tight">{item.alamat}</p>
+                </div>
+              </div>
+
+              {/* Sisi Kanan: QR Code Enkripsi Pintar */}
+              <div className="w-[2.2cm] h-full flex flex-col items-center justify-center border-l border-dashed border-gray-300 pl-2 flex-shrink-0">
+                <div className="w-[1.8cm] h-[1.8cm] bg-white border border-gray-200 p-0.5 rounded-md shadow-sm">
+                  <img 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`ANGGOTA|${item.nomorAnggota || "LAMA"}|${item.nama}|${item.alamat}`)}`} 
+                    alt="QR Code Anggota" 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <p className="text-[6px] text-center mt-1 text-gray-500 font-extrabold uppercase leading-tight">Scan Untuk<br/>Akses Pustaka</p>
+              </div>
+
+            </div>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 }

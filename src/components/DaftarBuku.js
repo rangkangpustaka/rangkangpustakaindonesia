@@ -14,6 +14,7 @@ export default function DaftarBuku({ isAdmin }) {
 
   const fileInputRef = useRef(null);
 
+  // State Form Edit
   const [editId, setEditId] = useState(null);
   const [editNoBuku, setEditNoBuku] = useState("");
   const [editKategori, setEditKategori] = useState("");
@@ -37,7 +38,7 @@ export default function DaftarBuku({ isAdmin }) {
       setBuku(dataBuku);
       setLoading(false);
     }, (error) => {
-      console.error("Gagal mengambil data: ", error);
+      console.error("Gagal mengambil data katalog: ", error);
       setLoading(false);
     });
     return () => unsubscribe();
@@ -54,6 +55,21 @@ export default function DaftarBuku({ isAdmin }) {
     }
   };
 
+  // FITUR BARU: Hapus Terpilih Sekaligus (Blok Delete)
+  const handleHapusBanyak = async () => {
+    if (window.confirm(`🚨 PERINGATAN KRUSIAL!\nYakin ingin menghapus ${bukuTerpilih.length} judul buku terpilih sekaligus secara permanen?`)) {
+      try {
+        for (const id of bukuTerpilih) {
+          await deleteDoc(doc(db, "buku", id));
+        }
+        setBukuTerpilih([]); 
+        alert("Buku terpilih berhasil dibersihkan dari katalog.");
+      } catch (error) {
+        alert("Gagal menghapus beberapa buku: " + error.message);
+      }
+    }
+  };
+
   const handleEditClick = (item) => {
     setEditId(item.id);
     setEditNoBuku(item.noBuku || "-");
@@ -65,7 +81,7 @@ export default function DaftarBuku({ isAdmin }) {
     setEditTempatTerbit(item.tempatTerbit || "-");
     setEditTahun(item.tahun || "");
     setEditSumber(item.sumber || "-");
-    setEditStok(item.stok || 0);
+    setEditStok(item.stok || 1);
     setEditSampul(item.sampul || "");
   };
 
@@ -79,30 +95,17 @@ export default function DaftarBuku({ isAdmin }) {
       });
       setEditId(null);
     } catch (error) {
-      alert("Gagal mengupdate: " + error.message);
+      alert("Gagal memperbarui data buku: " + error.message);
     }
   };
 
-  const bukuDifilter = buku.filter((item) => {
-    const keyword = kataKunci.toLowerCase();
-    return (
-      item.judul?.toLowerCase().includes(keyword) || item.penulis?.toLowerCase().includes(keyword) || 
-      item.noBuku?.toLowerCase().includes(keyword) || item.kategori?.toLowerCase().includes(keyword)
-    );
-  });
-
   const handleTogglePilih = (id) => {
-    setBukuTerpilih(prev => 
-      prev.includes(id) ? prev.filter(bId => bId !== id) : [...prev, id]
-    );
+    setBukuTerpilih(prev => prev.includes(id) ? prev.filter(bId => bId !== id) : [...prev, id]);
   };
 
   const handlePilihSemua = () => {
-    if (bukuTerpilih.length === bukuDifilter.length) {
-      setBukuTerpilih([]); 
-    } else {
-      setBukuTerpilih(bukuDifilter.map(b => b.id)); 
-    }
+    if (bukuTerpilih.length === bukuDifilter.length) setBukuTerpilih([]); 
+    else setBukuTerpilih(bukuDifilter.map(b => b.id)); 
   };
 
   const handleImportExcel = async (e) => {
@@ -135,17 +138,15 @@ export default function DaftarBuku({ isAdmin }) {
               tahun: baris["Tahun"] ? String(baris["Tahun"]) : "-",
               sumber: baris["Sumber"] ? String(baris["Sumber"]) : "-",
               stok: baris["Stok"] ? Number(baris["Stok"]) : 1,
-              // Gambar default berkelas jika data kosong
-              sampul: baris["Sampul URL"] ? String(baris["Sampul URL"]) : "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500&auto=format&fit=crop&q=60",
+              sampul: baris["Sampul URL"] ? String(baris["Sampul URL"]) : "",
               createdAt: new Date(),
             });
             hitungBerhasil++;
           }
         }
-        alert(`Luar Biasa! ${hitungBerhasil} buku berhasil diimpor.`);
+        alert(`Sukses! ${hitungBerhasil} judul buku berhasil diimpor ke database.`);
       } catch (error) {
-        console.error(error);
-        alert("Gagal mengimpor file!");
+        alert("Gagal membaca struktur berkas Excel!");
       } finally {
         setIsImporting(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -156,7 +157,7 @@ export default function DaftarBuku({ isAdmin }) {
 
   const handleExportExcel = () => {
     const dataEkspor = bukuTerpilih.length > 0 ? bukuDifilter.filter(b => bukuTerpilih.includes(b.id)) : bukuDifilter;
-    if (dataEkspor.length === 0) return alert("Tidak ada data untuk diekspor.");
+    if (dataEkspor.length === 0) return alert("Katalog kosong, data tidak bisa diekspor.");
 
     const headers = ["No", "No Buku", "Kategori", "Judul", "Penulis", "Penerbit", "Tempat Terbit", "Tahun", "Sumber", "Stok", "Sampul URL"];
     const csvData = dataEkspor.map((item, index) => [
@@ -168,59 +169,70 @@ export default function DaftarBuku({ isAdmin }) {
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = "Data_Buku_Rangkang_Pustaka.csv";
+    link.download = "Katalog_Buku_Rangkang_Pustaka.csv";
     link.click();
   };
 
   const handleCetakLabel = () => {
     if (bukuTerpilih.length === 0) {
-      alert("Silakan centang minimal satu buku yang ingin dicetak labelnya!");
+      alert("Silakan centang beberapa buku yang ingin dicetak stiker kodenya!");
       return;
     }
     window.print();
   };
 
-  if (loading) return <div className="p-4 text-center animate-pulse text-gray-600 font-bold">Memuat katalog...</div>;
+  const bukuDifilter = buku.filter((item) => {
+    const keyword = kataKunci.toLowerCase();
+    return (
+      item.judul?.toLowerCase().includes(keyword) || item.penulis?.toLowerCase().includes(keyword) || 
+      item.noBuku?.toLowerCase().includes(keyword) || item.kategori?.toLowerCase().includes(keyword)
+    );
+  });
+
+  if (loading) return <div className="p-4 text-center font-bold text-gray-500 animate-pulse">Memuat lembar katalog...</div>;
 
   return (
     <div className="mt-4 max-w-4xl w-full px-4 print:mt-0 print:px-0">
       
       <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleImportExcel} className="hidden" />
 
-      {/* --- TAMPILAN WEB --- */}
+      {/* --- LAYER PENGGUNA WEB (Otomatis Hilang Saat Print) --- */}
       <div className="print:hidden">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4 gap-4">
           <div>
-            <h2 className="text-2xl font-black text-gray-800 tracking-tight">Katalog Koleksi</h2>
-            <p className="text-sm text-gray-500 mt-0.5 font-medium">Total: {buku.length} Judul Buku</p>
+            <h2 className="text-2xl font-black text-gray-800 tracking-tight">Katalog Koleksi Buku</h2>
+            <p className="text-sm text-gray-500 mt-0.5 font-medium">Total Terdata: {buku.length} Judul</p>
           </div>
           
           <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2 flex-wrap">
-            <input type="text" placeholder="Cari judul, kategori, No. buku..." value={kataKunci} onChange={(e) => setKataKunci(e.target.value)} className="w-full sm:w-56 p-2.5 border-2 border-gray-200 rounded-xl text-sm bg-white outline-none focus:border-[#8e0004] transition-all" />
+            <input type="text" placeholder="Cari judul, penulis, No. buku..." value={kataKunci} onChange={(e) => setKataKunci(e.target.value)} className="w-full sm:w-56 p-2.5 border-2 border-gray-200 rounded-xl text-sm bg-white outline-none focus:border-[#8e0004] transition-all" />
             
             {isAdmin && (
-              <div className="flex gap-2 flex-wrap">
-                <button onClick={() => fileInputRef.current.click()} disabled={isImporting} className={`px-4 py-2.5 text-white font-bold rounded-xl text-sm transition-all ${isImporting ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
-                  {isImporting ? "⏳..." : "📥 Import"}
-                </button>
-                <button onClick={handleExportExcel} className="px-4 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 text-sm shadow-sm">📊 Export</button>
-                <button onClick={handleCetakLabel} className="px-4 py-2.5 bg-gray-800 text-white font-bold rounded-xl hover:bg-gray-900 text-sm shadow-sm">🏷️ Cetak</button>
+              <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+                {/* TOMBOL BLOK DELETE (Hanya Tampil Jika Ada Kotak Buku yang Dicentang) */}
+                {bukuTerpilih.length > 0 && (
+                  <button onClick={handleH整合HapusBanyak} onClick={handleHapusBanyak} className="px-4 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 text-sm shadow-sm animate-in fade-in transition-all">
+                    🗑️ Hapus ({bukuTerpilih.length})
+                  </button>
+                )}
+                
+                <button onClick={() => fileInputRef.current.click()} disabled={isImporting} className="px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 text-sm transition-all">{isImporting ? "Proses..." : "📥 Import"}</button>
+                <button onClick={handleExportExcel} className="px-4 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 text-sm transition-all">📊 Export</button>
+                <button onClick={handleCetakLabel} className="px-4 py-2.5 bg-gray-800 text-white font-bold rounded-xl hover:bg-gray-900 text-sm transition-all">🏷️ Cetak</button>
               </div>
             )}
           </div>
         </div>
 
         {isAdmin && bukuDifilter.length > 0 && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="pilihSemua" className="w-5 h-5 cursor-pointer accent-blue-600" checked={bukuDifilter.length > 0 && bukuTerpilih.length === bukuDifilter.length} onChange={handlePilihSemua} />
-              <label htmlFor="pilihSemua" className="text-sm font-bold text-blue-800 cursor-pointer">Pilih Semua ({bukuTerpilih.length} Terpilih)</label>
-            </div>
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center">
+            <input type="checkbox" id="pilihSemua" className="w-5 h-5 cursor-pointer accent-blue-600 mr-2" checked={bukuDifilter.length > 0 && bukuTerpilih.length === bukuDifilter.length} onChange={handlePilihSemua} />
+            <label htmlFor="pilihSemua" className="text-sm font-bold text-blue-800 cursor-pointer">Pilih Semua Buku Terfilter ({bukuTerpilih.length} Terpilih)</label>
           </div>
         )}
         
         {bukuDifilter.length === 0 ? (
-          <p className="text-center py-10 italic text-gray-500">Belum ada buku dalam katalog.</p>
+          <p className="text-center py-10 italic text-gray-500">Buku tidak ditemukan di dalam katalog.</p>
         ) : (
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
             {bukuDifilter.map((item) => (
@@ -233,25 +245,23 @@ export default function DaftarBuku({ isAdmin }) {
                 )}
 
                 {editId === item.id ? (
-                  // MODE EDIT
                   <div className="flex flex-col gap-2 w-full text-xs text-black">
                     <div className="grid grid-cols-2 gap-2">
                       <input className="p-2 border rounded-lg bg-gray-50" placeholder="No. Buku" value={editNoBuku} onChange={(e) => setEditNoBuku(e.target.value)} />
                       <input className="p-2 border rounded-lg bg-gray-50" placeholder="Kategori" value={editKategori} onChange={(e) => setEditKategori(e.target.value)} />
                     </div>
-                    <input className="p-2 border rounded-lg bg-gray-50" placeholder="Judul" value={editJudul} onChange={(e) => setEditJudul(e.target.value)} />
-                    <input className="p-2 border rounded-lg bg-gray-50" placeholder="Sumber" value={editSumber} onChange={(e) => setEditSumber(e.target.value)} />
-                    <input className="p-2 border rounded-lg bg-gray-50" placeholder="URL Sampul Gambar" value={editSampul} onChange={(e) => setEditSampul(e.target.value)} />
+                    <input className="p-2 border rounded-lg bg-gray-50" placeholder="Judul Buku" value={editJudul} onChange={(e) => setEditJudul(e.target.value)} />
+                    <input className="p-2 border rounded-lg bg-gray-50" placeholder="Nama Penulis" value={editPenulis} onChange={(e) => setEditPenulis(e.target.value)} />
+                    <input className="p-2 border rounded-lg bg-gray-50" placeholder="Tautan/URL Gambar Sampul" value={editSampul} onChange={(e) => setEditSampul(e.target.value)} />
                     <div className="flex gap-2 justify-end mt-2">
                       <button onClick={() => setEditId(null)} className="px-3 py-1.5 bg-gray-200 font-bold rounded-lg hover:bg-gray-300">Batal</button>
                       <button onClick={() => handleUpdate(item.id)} className="px-3 py-1.5 bg-green-600 font-bold text-white rounded-lg hover:bg-green-700">Simpan</button>
                     </div>
                   </div>
                 ) : (
-                  // MODE BACA (SEKARANG MEMILIKI TATA LETAK SAMPUL GAMBAR)
                   <div className="flex gap-4 items-start h-full pr-4">
                     
-                    {/* ELEMEN BARU: WADAH FOTO SAMPUL BUKU */}
+                    {/* WADAH FOTO SAMPUL BUKU */}
                     <div className="w-20 h-28 bg-gray-100 border border-gray-200 rounded-xl overflow-hidden flex-shrink-0 shadow-inner relative">
                       <img 
                         src={item.sampul || "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=500&auto=format&fit=crop&q=60"} 
@@ -261,7 +271,7 @@ export default function DaftarBuku({ isAdmin }) {
                       />
                     </div>
 
-                    {/* DETAIL INFORMASI BUKU */}
+                    {/* DETAIL TEKS BUKU */}
                     <div className="flex-1 flex flex-col justify-between min-h-[112px]">
                       <div>
                         <div className="flex gap-1.5 mb-1 flex-wrap">
@@ -270,13 +280,12 @@ export default function DaftarBuku({ isAdmin }) {
                         </div>
                         <h3 className="font-bold text-gray-900 text-sm sm:text-base line-clamp-2 leading-tight">{item.judul}</h3>
                         <p className="text-xs text-gray-500 font-medium mt-1">Penulis: <span className="text-gray-800 font-semibold">{item.penulis}</span></p>
-                        <p className="text-[11px] text-gray-400 font-medium mt-1">Sumber: <span className="text-gray-600 font-semibold">{item.sumber || "-"}</span></p>
                       </div>
 
                       {isAdmin && (
                         <div className="flex gap-1.5 mt-3">
-                          <button onClick={() => handleEditClick(item)} className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold rounded-lg hover:bg-amber-100 transition-all">Edit</button>
-                          <button onClick={() => handleDelete(item.id, item.judul)} className="px-3 py-1 bg-red-50 text-red-700 border border-red-200 text-xs font-bold rounded-lg hover:bg-red-100 transition-all">Hapus</button>
+                          <button onClick={() => handleEditClick(item)} className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold rounded-lg hover:bg-amber-100">Edit</button>
+                          <button onClick={() => handleDelete(item.id, item.judul)} className="px-3 py-1 bg-red-50 text-red-700 border border-red-200 text-xs font-bold rounded-lg hover:bg-red-100">Hapus</button>
                         </div>
                       )}
                     </div>
@@ -289,33 +298,40 @@ export default function DaftarBuku({ isAdmin }) {
         )}
       </div>
 
-      {/* --- DESAIN CETAK LABEL FISIK STIKER --- */}
+      {/* --- LAYER CETAK STIKER LABEL FISIK + ENKRIPSI QR CODE BUKU (Hanya Muncul Saat Print) --- */}
       <div className="hidden print:flex flex-wrap gap-4 justify-start items-start">
         {bukuDifilter.filter(b => bukuTerpilih.includes(b.id)).map((item) => (
           <div key={`label-${item.id}`} className="w-[9cm] h-[4.5cm] border-[3px] border-black flex flex-col bg-white text-black font-sans break-inside-avoid overflow-hidden">
+            
+            {/* Sisi Atas: Logo, Judul Yayasan, & QR Buku */}
             <div className="flex border-b-[3px] border-black h-[45%]">
-              <div className="w-[35%] border-r-[3px] border-black flex items-center justify-center p-1 bg-white">
-                <img src="/logo.jpg" alt="Logo Rangkang Pustaka" className="max-h-full max-w-full object-contain grayscale" />
+              <div className="w-[25%] border-r-[3px] border-black flex items-center justify-center p-1 bg-white">
+                <img src="/logo.jpg" alt="Logo Rangkang" className="max-h-full max-w-full object-contain grayscale" />
               </div>
-              <div className="w-[65%] flex flex-col items-center justify-center text-center px-1">
-                <p className="text-[11px] font-medium leading-tight">Taman Baca Masyarakat</p>
-                <p className="text-[12px] font-extrabold leading-tight mt-0.5">"Rumah Baca Rangkang Pustaka"</p>
+              <div className="w-[50%] border-r-[3px] border-black flex flex-col items-center justify-center text-center px-1">
+                <p className="text-[9px] font-medium leading-tight uppercase tracking-wider">Taman Baca Masyarakat</p>
+                <p className="text-[12px] font-black leading-tight mt-0.5 uppercase tracking-wide">Rangkang Pustaka</p>
+              </div>
+              <div className="w-[25%] flex items-center justify-center p-0.5 bg-white flex-shrink-0">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`BUKU|${item.id}`)}`} 
+                  alt="QR Buku"
+                  className="w-full h-full object-contain" 
+                />
               </div>
             </div>
+
+            {/* Sisi Bawah: Lembar Teks Klasifikasi Buku */}
             <div className="flex h-[55%] text-[11px]">
-              <div className="w-[35%] border-r-[3px] border-black px-1.5 py-1 flex flex-col justify-between font-medium">
-                <p>No. Buku</p>
-                <p>Tahun</p>
-                <p>Sumber</p>
-                <p>Kategori</p>
+              <div className="w-[35%] border-r-[3px] border-black px-1.5 py-1 flex flex-col justify-between font-medium text-gray-700">
+                <p>No. Registrasi</p><p>Tahun Terbit</p><p>Asal / Sumber</p><p>Kategori</p>
               </div>
-              <div className="w-[65%] px-1.5 py-1 flex flex-col justify-between font-bold">
-                <p className="truncate">: {item.noBuku}</p>
-                <p className="truncate">: {item.tahun}</p>
-                <p className="truncate">: {item.sumber || "-"}</p>
-                <p className="truncate">: {item.kategori}</p>
+              <div className="w-[65%] px-1.5 py-1 flex flex-col justify-between font-bold text-black">
+                <p className="truncate">: {item.noBuku}</p><p className="truncate">: {item.tahun || "-"}</p>
+                <p className="truncate">: {item.sumber || "-"}</p><p className="truncate">: {item.kategori}</p>
               </div>
             </div>
+
           </div>
         ))}
       </div>
