@@ -10,7 +10,8 @@ import DaftarPeminjaman from "@/components/DaftarPeminjaman";
 import InputAbsensi from "@/components/InputAbsensi";       
 import DaftarAbsensi from "@/components/DaftarAbsensi";     
 import DashboardStats from "@/components/DashboardStats";
-import ScannerModal from "@/components/ScannerModal"; // IMPOR KAMERA
+import ScannerModal from "@/components/ScannerModal";
+import ManajemenPustakawan from "@/components/ManajemenPustakawan"; // IMPORT MENU BARU
 
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
@@ -22,7 +23,6 @@ export default function Home() {
   const [loadingAuth, setLoadingAuth] = useState(false);
   const [tampilkanLogin, setTampilkanLogin] = useState(false);
   
-  // STATE BARU UNTUK KAMERA ADMIN
   const [tampilkanKameraAdmin, setTampilkanKameraAdmin] = useState(false);
 
   const [activeTabPublic, setActiveTabPublic] = useState("katalog");
@@ -49,10 +49,8 @@ export default function Home() {
     }
   };
 
-  // LOGIKA LOGIN MENGGUNAKAN QR CODE PUSTAKAWAN
   const handleScanAdmin = async (dataQR) => {
     setTampilkanKameraAdmin(false);
-    // Format QR Admin harus: ADMIN|email@anda.com|passwordAnda
     if (dataQR.startsWith("ADMIN|")) {
       const parts = dataQR.split("|");
       const scanEmail = parts[1];
@@ -61,9 +59,8 @@ export default function Home() {
       setLoadingAuth(true);
       try {
         await signInWithEmailAndPassword(auth, scanEmail, scanPass);
-        alert("Login Sukses via QR Code!");
       } catch (error) {
-        alert("Gagal login via QR! " + error.message);
+        alert("Gagal login via QR! Pastikan email dan password aktif.");
       } finally {
         setLoadingAuth(false);
       }
@@ -81,7 +78,6 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#f8f9fa] p-4 md:p-8 flex flex-col items-center print:bg-white print:p-0">
       
-      {/* KAMERA SCANNER ADMIN */}
       {tampilkanKameraAdmin && <ScannerModal title="Scan Kartu Pustakawan" onScan={handleScanAdmin} onClose={() => setTampilkanKameraAdmin(false)} />}
 
       <div className="w-full max-w-4xl flex flex-col items-center print:hidden">
@@ -100,7 +96,7 @@ export default function Home() {
           <div className="relative z-10 w-full md:w-auto flex justify-center md:justify-end">
             {admin ? (
               <div className="flex items-center gap-4 bg-white/10 p-2 rounded-xl backdrop-blur-sm">
-                <span className="text-xs font-bold text-white uppercase tracking-wider pl-2">🔑 Pustakawan</span>
+                <span className="text-xs font-bold text-white uppercase tracking-wider pl-2">🔑 {admin.email}</span>
                 <button onClick={handleLogout} className="px-4 py-2 bg-[#fec700] text-[#8e0004] font-extrabold rounded-lg hover:bg-yellow-400 transition-all text-xs shadow-md">LOGOUT</button>
               </div>
             ) : (
@@ -111,7 +107,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* LACI LOGIN ADMIN + TOMBOL SCAN QR */}
         {!admin && tampilkanLogin && (
           <div className="w-full bg-white border-2 border-[#8e0004] p-5 rounded-2xl shadow-md mb-6 animate-in slide-in-from-top duration-300">
             <div className="flex justify-between items-center mb-4 border-b pb-3">
@@ -140,11 +135,12 @@ export default function Home() {
         {admin && <DashboardStats />}
 
         {admin && (
-          <div className="w-full flex flex-col sm:flex-row gap-2 mb-8 flex-wrap">
-            <button onClick={() => setActiveTabAdmin("buku")} className={`flex-1 py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "buku" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📚 Katalog</button>
-            <button onClick={() => setActiveTabAdmin("anggota")} className={`flex-1 py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "anggota" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>👥 Anggota</button>
-            <button onClick={() => setActiveTabAdmin("sirkulasi")} className={`flex-1 py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "sirkulasi" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>🔄 Sirkulasi</button>
-            <button onClick={() => setActiveTabAdmin("absen")} className={`flex-1 py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "absen" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📝 Buku Tamu</button>
+          <div className="w-full flex gap-2 mb-8 flex-wrap overflow-x-auto pb-2">
+            <button onClick={() => setActiveTabAdmin("buku")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "buku" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📚 Katalog</button>
+            <button onClick={() => setActiveTabAdmin("anggota")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "anggota" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>👥 Anggota</button>
+            <button onClick={() => setActiveTabAdmin("sirkulasi")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "sirkulasi" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>🔄 Sirkulasi</button>
+            <button onClick={() => setActiveTabAdmin("absen")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "absen" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📝 Absensi</button>
+            <button onClick={() => setActiveTabAdmin("pustakawan")} className={`flex-1 min-w-[120px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "pustakawan" ? "bg-gray-900 text-[#fec700] border-gray-900" : "bg-white text-gray-800 border-gray-200"}`}>🛡️ Pustakawan</button>
           </div>
         )}
 
@@ -161,6 +157,7 @@ export default function Home() {
         {admin && activeTabAdmin === "anggota" && <DaftarAnggota />}
         {admin && activeTabAdmin === "sirkulasi" && <DaftarPeminjaman />}
         {admin && activeTabAdmin === "absen" && <DaftarAbsensi />}
+        {admin && activeTabAdmin === "pustakawan" && <ManajemenPustakawan />}
       </div>
     </main>
   );

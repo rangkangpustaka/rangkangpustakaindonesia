@@ -1,30 +1,66 @@
 // src/components/ScannerModal.js
 "use client";
-import { useEffect } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { useEffect, useState } from "react";
+import { Html5Qrcode } from "html5-qrcode";
 
 export default function ScannerModal({ onScan, onClose, title }) {
+  const [pesan, setPesan] = useState("⏳ Meminta izin kamera...");
+
   useEffect(() => {
-    // Pengaturan mesin scanner kamera yang lebih stabil
-    const scanner = new Html5QrcodeScanner("reader", {
-      qrbox: { width: 250, height: 250 },
-      fps: 10,
-      rememberLastUsedCamera: true, // Otomatis ingat kamera yang dipakai
-    });
+    const scanner = new Html5Qrcode("reader");
+    let isMounted = true;
 
-    scanner.render(
-      (decodedText) => {
-        scanner.clear(); // Matikan kamera setelah berhasil baca
-        onScan(decodedText);
-      },
-      (errorMessage) => { 
-        // Abaikan error pencarian frame agar console tidak penuh
+    const mulaiKamera = async () => {
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          (decodedText) => {
+            if (isMounted) {
+              isMounted = false; // Kunci agar tidak membaca QR 2 kali
+              
+              // PEREDAM ERROR 1: Saat kamera berhasil membaca QR
+              try {
+                scanner.stop().then(() => {
+                  scanner.clear();
+                  onScan(decodedText);
+                }).catch(() => {
+                  onScan(decodedText);
+                });
+              } catch (err) {
+                // Tangkap error jika scanner menolak di-stop
+                try { scanner.clear(); } catch(e) {}
+                onScan(decodedText);
+              }
+            }
+          },
+          (errorMessage) => { /* Abaikan error pencarian fokus lensa */ }
+        );
+        if (isMounted) setPesan(""); 
+      } catch (error) {
+        if (isMounted) setPesan("⚠️ Gagal mengakses kamera. Mohon izinkan akses kamera di browser Anda.");
       }
-    );
+    };
 
-    // Bersihkan kamera saat ditutup agar tidak nyangkut di background
+    mulaiKamera();
+
+    // PEREDAM ERROR 2: Pembersih otomatis saat modal ditutup / pindah halaman
     return () => {
-      scanner.clear().catch(e => console.error(e));
+      isMounted = false;
+      try {
+        scanner.stop().then(() => {
+          scanner.clear();
+        }).catch(() => {
+          // Bersihkan sisa elemen video di layar jika nyangkut
+          const readerElement = document.getElementById("reader");
+          if (readerElement) readerElement.innerHTML = "";
+        });
+      } catch (error) {
+        // Tangkap error sinkronus "Cannot stop, scanner is not running"
+        try { scanner.clear(); } catch(e) {}
+        const readerElement = document.getElementById("reader");
+        if (readerElement) readerElement.innerHTML = "";
+      }
     };
   }, [onScan]);
 
@@ -35,18 +71,21 @@ export default function ScannerModal({ onScan, onClose, title }) {
           {title || "Arahkan QR Code"}
         </h3>
         
-        {/* Wadah Kamera */}
-        <div id="reader" className="w-full rounded-xl overflow-hidden border-4 border-gray-100 bg-gray-900 min-h-[250px]"></div>
+        <div className="relative w-full rounded-xl overflow-hidden border-4 border-gray-200 bg-gray-50 min-h-[250px] flex flex-col items-center justify-center">
+          {pesan && (
+            <div className="absolute z-10 px-4 text-center">
+              <p className="text-sm font-bold text-gray-700">{pesan}</p>
+            </div>
+          )}
+          <div id="reader" className="w-full h-full relative z-0"></div>
+        </div>
         
-        <p className="text-center text-xs text-red-600 mt-3 font-bold">
-          ⚠️ Jangan lupa klik "Allow / Izinkan" Kamera di Browser Anda!
-        </p>
-        <p className="text-center text-[10px] text-gray-500 mt-1 font-medium">
-          Posisikan kotak QR tepat di tengah layar.
+        <p className="text-center text-[10px] text-gray-500 mt-3 font-medium">
+          Posisikan kotak QR tepat di tengah layar agar otomatis terbaca.
         </p>
         
-        <button onClick={onClose} className="w-full mt-4 py-3 bg-red-100 text-red-700 font-bold rounded-xl hover:bg-red-200 transition-all uppercase">
-          Tutup Kamera
+        <button onClick={onClose} className="w-full mt-4 py-3 bg-red-100 text-red-700 font-bold rounded-xl hover:bg-red-200 transition-all uppercase tracking-wider">
+          ✖ Tutup Kamera
         </button>
       </div>
     </div>
