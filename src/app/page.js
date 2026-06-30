@@ -7,9 +7,10 @@ import InputAnggota from "@/components/InputAnggota";
 import DaftarAnggota from "@/components/DaftarAnggota";
 import InputPeminjaman from "@/components/InputPeminjaman"; 
 import DaftarPeminjaman from "@/components/DaftarPeminjaman"; 
-import InputAbsensi from "@/components/InputAbsensi";       // IMPORT BARU
-import DaftarAbsensi from "@/components/DaftarAbsensi";     // IMPORT BARU
+import InputAbsensi from "@/components/InputAbsensi";       
+import DaftarAbsensi from "@/components/DaftarAbsensi";     
 import DashboardStats from "@/components/DashboardStats";
+import ScannerModal from "@/components/ScannerModal"; // IMPOR KAMERA
 
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
@@ -21,9 +22,11 @@ export default function Home() {
   const [loadingAuth, setLoadingAuth] = useState(false);
   const [tampilkanLogin, setTampilkanLogin] = useState(false);
   
-  // Tab dipisah: satu untuk Warga/Pengunjung, satu untuk Admin
-  const [activeTabPublic, setActiveTabPublic] = useState("katalog"); // 'katalog' atau 'absen'
-  const [activeTabAdmin, setActiveTabAdmin] = useState("buku");      // 'buku', 'anggota', 'sirkulasi', 'absen'
+  // STATE BARU UNTUK KAMERA ADMIN
+  const [tampilkanKameraAdmin, setTampilkanKameraAdmin] = useState(false);
+
+  const [activeTabPublic, setActiveTabPublic] = useState("katalog");
+  const [activeTabAdmin, setActiveTabAdmin] = useState("buku");      
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -34,7 +37,7 @@ export default function Home() {
   }, []);
 
   const handleLogin = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setLoadingAuth(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -46,6 +49,29 @@ export default function Home() {
     }
   };
 
+  // LOGIKA LOGIN MENGGUNAKAN QR CODE PUSTAKAWAN
+  const handleScanAdmin = async (dataQR) => {
+    setTampilkanKameraAdmin(false);
+    // Format QR Admin harus: ADMIN|email@anda.com|passwordAnda
+    if (dataQR.startsWith("ADMIN|")) {
+      const parts = dataQR.split("|");
+      const scanEmail = parts[1];
+      const scanPass = parts[2];
+      
+      setLoadingAuth(true);
+      try {
+        await signInWithEmailAndPassword(auth, scanEmail, scanPass);
+        alert("Login Sukses via QR Code!");
+      } catch (error) {
+        alert("Gagal login via QR! " + error.message);
+      } finally {
+        setLoadingAuth(false);
+      }
+    } else {
+      alert("⚠️ QR Code Ditolak! Ini bukan Kartu Pustakawan.");
+    }
+  };
+
   const handleLogout = async () => {
     await signOut(auth);
     setActiveTabAdmin("buku");
@@ -54,13 +80,16 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#f8f9fa] p-4 md:p-8 flex flex-col items-center print:bg-white print:p-0">
+      
+      {/* KAMERA SCANNER ADMIN */}
+      {tampilkanKameraAdmin && <ScannerModal title="Scan Kartu Pustakawan" onScan={handleScanAdmin} onClose={() => setTampilkanKameraAdmin(false)} />}
+
       <div className="w-full max-w-4xl flex flex-col items-center print:hidden">
         
-        {/* HEADER UTAMA */}
         <div className="w-full flex flex-col md:flex-row justify-between items-center mb-6 bg-[#8e0004] p-5 md:p-6 rounded-2xl shadow-lg border-b-[6px] border-[#fec700] relative overflow-hidden gap-4">
           <div className="relative z-10 flex items-center gap-4 text-center md:text-left">
             <div className="bg-white py-2 px-3 rounded-xl shadow-md border-b-4 border-gray-200 flex-shrink-0">
-              <img src="/logo.jpg" alt="Logo Rangkang Pustaka" className="h-14 sm:h-16 w-auto object-contain" />
+              <img src="/logo.jpg" alt="Logo" className="h-14 sm:h-16 w-auto object-contain" />
             </div>
             <div className="hidden sm:block text-left">
               <p className="text-white text-xs font-bold tracking-[0.2em] uppercase opacity-95">Taman Baca Masyarakat</p>
@@ -82,19 +111,24 @@ export default function Home() {
           </div>
         </div>
 
-        {/* LACI LOGIN ADMIN */}
+        {/* LACI LOGIN ADMIN + TOMBOL SCAN QR */}
         {!admin && tampilkanLogin && (
           <div className="w-full bg-white border-2 border-[#8e0004] p-5 rounded-2xl shadow-md mb-6 animate-in slide-in-from-top duration-300">
-            <h3 className="text-sm font-black text-[#8e0004] uppercase tracking-wider mb-3">Masuk Sistem Internal</h3>
+            <div className="flex justify-between items-center mb-4 border-b pb-3">
+              <h3 className="text-sm font-black text-[#8e0004] uppercase tracking-wider">Masuk Sistem Internal</h3>
+              <button onClick={() => setTampilkanKameraAdmin(true)} className="px-3 py-1.5 bg-indigo-600 text-white font-bold text-xs rounded-lg hover:bg-indigo-700 shadow-sm flex items-center gap-2">
+                📷 Scan Kartu Admin
+              </button>
+            </div>
+            
             <form onSubmit={handleLogin} className="flex flex-col sm:flex-row gap-3">
-              <input type="email" placeholder="Email Akun Pustakawan" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-gray-50 border p-3 rounded-xl text-sm flex-1 focus:ring-2 focus:ring-[#8e0004] outline-none" required />
-              <input type="password" placeholder="Kata Sandi / Password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-gray-50 border p-3 rounded-xl text-sm flex-1 focus:ring-2 focus:ring-[#8e0004] outline-none" required />
-              <button type="submit" disabled={loadingAuth} className="px-6 py-3 bg-[#8e0004] text-white font-black rounded-xl hover:bg-red-800 text-sm transition-all uppercase shadow-md">{loadingAuth ? "Proses..." : "VERIFIKASI"}</button>
+              <input type="email" placeholder="Ketik Email..." value={email} onChange={(e) => setEmail(e.target.value)} className="bg-gray-50 border p-3 rounded-xl text-sm flex-1 focus:border-[#8e0004] outline-none" required />
+              <input type="password" placeholder="Ketik Sandi..." value={password} onChange={(e) => setPassword(e.target.value)} className="bg-gray-50 border p-3 rounded-xl text-sm flex-1 focus:border-[#8e0004] outline-none" required />
+              <button type="submit" disabled={loadingAuth} className="px-6 py-3 bg-[#8e0004] text-white font-black rounded-xl hover:bg-red-800 text-sm transition-all uppercase shadow-md">{loadingAuth ? "Proses..." : "MASUK"}</button>
             </form>
           </div>
         )}
 
-        {/* MENU NAVIGASI PUBLIK (JIKA BUKAN ADMIN) */}
         {!admin && (
           <div className="w-full flex gap-2 mb-6 bg-gray-200/50 p-1.5 rounded-xl">
             <button onClick={() => setActiveTabPublic("katalog")} className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${activeTabPublic === "katalog" ? "bg-white text-[#8e0004] shadow-sm" : "text-gray-600 hover:text-gray-900"}`}>📚 Cari Buku</button>
@@ -102,13 +136,9 @@ export default function Home() {
           </div>
         )}
 
-        {/* TAMPILAN KONTEN UNTUK PUBLIK */}
         {!admin && activeTabPublic === "absen" && <InputAbsensi />}
-        
-        {/* DASHBOARD STATISTIK ADMIN */}
         {admin && <DashboardStats />}
 
-        {/* MENU NAVIGASI ADMIN */}
         {admin && (
           <div className="w-full flex flex-col sm:flex-row gap-2 mb-8 flex-wrap">
             <button onClick={() => setActiveTabAdmin("buku")} className={`flex-1 py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "buku" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📚 Katalog</button>
@@ -118,7 +148,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* FORM INPUT ADMIN */}
         <div className="w-full flex justify-center mb-8">
           {admin && activeTabAdmin === "buku" && <InputBuku />}
           {admin && activeTabAdmin === "anggota" && <InputAnggota />}
@@ -126,7 +155,6 @@ export default function Home() {
         </div>
       </div> 
 
-      {/* RENDER LIST DATA */}
       <div className="w-full max-w-4xl flex justify-center">
         {(!admin && activeTabPublic === "katalog") && <DaftarBuku isAdmin={false} />}
         {admin && activeTabAdmin === "buku" && <DaftarBuku isAdmin={true} />}
@@ -134,7 +162,6 @@ export default function Home() {
         {admin && activeTabAdmin === "sirkulasi" && <DaftarPeminjaman />}
         {admin && activeTabAdmin === "absen" && <DaftarAbsensi />}
       </div>
-
     </main>
   );
 }
