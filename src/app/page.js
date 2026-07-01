@@ -252,6 +252,58 @@ export default function Home() {
         {admin && hakAksesAdmin === "Akses Besar" && activeTabAdmin === "pustakawan" && <ManajemenPustakawan />}
         {admin && hakAksesAdmin === "Akses Besar" && activeTabAdmin === "kas" && <ManajemenKas />}
       </div>
+
+      {/* ========================================= */}
+      {/* FOOTER INFORMASI KONTAK (KHUSUS PENGUNJUNG) */}
+      {/* ========================================= */}
+      {!admin && (
+        <div className="w-full max-w-4xl mt-12 bg-white border-2 border-gray-100 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-center md:items-start gap-8 shadow-sm text-center md:text-left animate-in fade-in duration-700">
+          
+          {/* Kolom 1: Alamat */}
+          <div className="flex-1">
+            <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
+              <span className="text-2xl">🏡</span>
+              <h4 className="font-black text-gray-800 uppercase tracking-widest text-sm">Rangkang Pustaka</h4>
+            </div>
+            <p className="text-xs text-gray-500 font-bold leading-relaxed">
+              Dusun Mesjid, Desa Meunasah Meucat,<br />
+              Kec. Nisam, Kabupaten Aceh Utara,<br />
+              Aceh 24378
+            </p>
+          </div>
+
+          {/* Kolom 2: Jam Operasional */}
+          <div className="flex-1 md:border-l md:border-r border-gray-100 md:px-6">
+            <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
+              <span className="text-2xl">⏰</span>
+              <h4 className="font-black text-gray-800 uppercase tracking-widest text-sm">Jam Operasional</h4>
+            </div>
+            <p className="text-xs text-gray-500 font-bold">Sabtu - Minggu</p>
+            <p className="text-xs font-black text-[#8e0004] mt-1 bg-red-50 inline-block px-2 py-1 rounded-lg border border-red-100">
+              08.00 - 16.00 WIB
+            </p>
+          </div>
+
+          {/* Kolom 3: Kontak Resmi */}
+          <div className="flex-1">
+            <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
+              <span className="text-2xl">📞</span>
+              <h4 className="font-black text-gray-800 uppercase tracking-widest text-sm">Hubungi Kami</h4>
+            </div>
+            <p className="text-xs text-gray-500 font-bold mb-2 flex items-center justify-center md:justify-start gap-2">
+              <span className="bg-green-100 text-green-700 p-1 rounded-md text-[10px]">💬</span> 
+              +62 853-5861-7901
+            </p>
+            <p className="text-xs text-gray-500 font-bold flex items-center justify-center md:justify-start gap-2">
+              <span className="bg-blue-100 text-blue-700 p-1 rounded-md text-[10px]">✉️</span> 
+              rangkangpustaka@gmail.com
+            </p>
+          </div>
+
+        </div>
+      )}
+      {/* ========================================= */}
+
     </main>
   );
 }
