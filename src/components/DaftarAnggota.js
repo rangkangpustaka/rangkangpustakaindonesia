@@ -2,7 +2,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function DaftarAnggota() {
   const [anggota, setAnggota] = useState([]);
@@ -65,9 +65,33 @@ export default function DaftarAnggota() {
     else setAnggotaTerpilih(anggotaDifilter.map(a => a.id)); 
   };
 
-  const handleCetakKartu = () => {
+  // ==========================================
+  // FITUR CETAK KARTU + INTEGRASI KAS KEUANGAN
+  // ==========================================
+  const handleCetakKartu = async () => {
     if (anggotaTerpilih.length === 0) return alert("Centang minimal 1 anggota untuk dicetak kartunya!");
-    window.print();
+    
+    // Ajukan pertanyaan kas otomatis sebelum cetak lembar fisik
+    if (window.confirm(`Apakah Anda ingin mencatat biaya pembuatan fisik untuk ${anggotaTerpilih.length} kartu ini ke Buku Kas Keuangan? (Infaq Rp5.000 / kartu)`)) {
+      try {
+        const totalBiayaCetak = anggotaTerpilih.length * 5000;
+        
+        // Suntik data ke kas otomatis
+        await addDoc(collection(db, "kas"), {
+          tipe: "Pemasukan",
+          kategori: "Cetak Kartu Anggota",
+          nominal: totalBiayaCetak,
+          keterangan: `Otomatis: Pembuatan kartu fisik anggota (${anggotaTerpilih.length} orang)`,
+          createdAt: serverTimestamp() 
+        });
+        alert(`💰 Kas Berhasil Dicatat! Pemasukan sebesar Rp${totalBiayaCetak.toLocaleString("id-ID")} telah dibukukan.`);
+      } catch (e) {
+        alert("Gagal mencatat kas otomatis: " + e.message);
+      }
+    }
+    
+    // Setelah konfirmasi kas selesai, baru jendela print terbuka
+    window.print(); 
   };
 
   const anggotaDifilter = anggota.filter((item) => {
@@ -148,14 +172,12 @@ export default function DaftarAnggota() {
         )}
       </div>
 
-      {/* TAMPILAN KHUSUS PRINT KARTU ID (Dioptimalkan Warna & Kontrasnya) */}
+      {/* TAMPILAN KHUSUS PRINT KARTU ID */}
       <div className="hidden print:flex flex-wrap gap-4 justify-start items-start">
         {anggotaDifilter.filter(a => anggotaTerpilih.includes(a.id)).map((item) => (
           <div key={`card-${item.id}`} className="relative w-[8.5cm] h-[5.4cm] border-[2px] border-black bg-white rounded-lg overflow-hidden flex flex-col font-sans break-inside-avoid shadow-sm print-exact-colors" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
             
-            {/* Header Kartu Marun */}
             <div className="h-[1.6cm] w-full flex items-center px-2 gap-2 border-b-4 border-[#fec700]" style={{ backgroundColor: '#8e0004' }}>
-              {/* === PERBAIKAN LOGO: Dibuat overflow-hidden agar terpotong bulat sempurna === */}
               <div className="h-11 w-11 bg-white rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center">
                 <img src="/logo.jpg" alt="Logo" className="h-full w-full object-contain p-0.5 bg-white" />
               </div>
@@ -165,9 +187,7 @@ export default function DaftarAnggota() {
               </div>
             </div>
 
-            {/* Badan Kartu */}
             <div className="flex-1 flex p-2 bg-gradient-to-br from-white to-gray-50">
-              {/* Sisi Kiri: Identitas */}
               <div className="flex-1 flex flex-col justify-center gap-1.5">
                 <div>
                   <p className="text-[7px] font-extrabold uppercase tracking-wider" style={{ color: '#6b7280' }}>Nama Anggota</p>
@@ -183,7 +203,6 @@ export default function DaftarAnggota() {
                 </div>
               </div>
 
-              {/* Sisi Kanan: QR Code */}
               <div className="w-[2.2cm] h-full flex flex-col items-center justify-center border-l-2 border-dashed border-gray-300 pl-2 flex-shrink-0">
                 <div className="w-[1.8cm] h-[1.8cm] bg-white border-2 border-gray-200 p-0.5 rounded-md shadow-sm">
                   <img 

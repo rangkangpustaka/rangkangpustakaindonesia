@@ -11,7 +11,6 @@ export default function DaftarBuku({ isAdmin }) {
   const [kataKunci, setKataKunci] = useState("");
   const [bukuTerpilih, setBukuTerpilih] = useState([]);
   const [isImporting, setIsImporting] = useState(false);
-
   const fileInputRef = useRef(null);
 
   const [editId, setEditId] = useState(null);
@@ -51,13 +50,9 @@ export default function DaftarBuku({ isAdmin }) {
   const handleHapusBanyak = async () => {
     if (window.confirm(`🚨 PERINGATAN!\nYakin ingin menghapus ${bukuTerpilih.length} buku terpilih sekaligus?`)) {
       try {
-        for (const id of bukuTerpilih) {
-          await deleteDoc(doc(db, "buku", id));
-        }
+        for (const id of bukuTerpilih) { await deleteDoc(doc(db, "buku", id)); }
         setBukuTerpilih([]); 
-      } catch (error) {
-        alert("Gagal menghapus: " + error.message);
-      }
+      } catch (error) { alert("Gagal menghapus: " + error.message); }
     }
   };
 
@@ -87,9 +82,6 @@ export default function DaftarBuku({ isAdmin }) {
     else setBukuTerpilih(bukuDifilter.map(b => b.id)); 
   };
 
-  // ==========================================
-  // FITUR IMPOR EXCEL (ANTI-DUPLIKAT)
-  // ==========================================
   const handleImportExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -102,8 +94,7 @@ export default function DaftarBuku({ isAdmin }) {
         const sheetName = workbook.SheetNames[0];
         const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
         
-        let hitungBerhasil = 0;
-        let hitungDilewati = 0;
+        let hitungBerhasil = 0, hitungDilewati = 0;
         
         for (const baris of jsonData) {
           const judulExcel = baris["JUDUL"] || baris["Judul"] || baris["judul"];
@@ -111,22 +102,15 @@ export default function DaftarBuku({ isAdmin }) {
           const noRegExcel = String(baris["NO REGISTRASI"] || baris["No Registrasi"] || baris["No Buku"] || "-").trim();
 
           if (judulExcel && penulisExcel) {
-            // Radar Anti-Duplikat
             const apakahSudahAda = buku.find(b => 
               (noRegExcel !== "-" && b.noBuku === noRegExcel) || 
-              (b.judul.toLowerCase() === String(judulExcel).toLowerCase() && 
-               b.penulis.toLowerCase() === String(penulisExcel).toLowerCase())
+              (b.judul.toLowerCase() === String(judulExcel).toLowerCase() && b.penulis.toLowerCase() === String(penulisExcel).toLowerCase())
             );
 
-            if (apakahSudahAda) {
-              hitungDilewati++;
-              continue; 
-            }
+            if (apakahSudahAda) { hitungDilewati++; continue; }
 
             await addDoc(collection(db, "buku"), {
-              noBuku: noRegExcel,
-              judul: String(judulExcel), 
-              penulis: String(penulisExcel),
+              noBuku: noRegExcel, judul: String(judulExcel), penulis: String(penulisExcel),
               penerbit: String(baris["PENERBIT"] || baris["Penerbit"] || "-"),
               tempatTerbit: String(baris["KOTA TERBIT"] || baris["Tempat Terbit"] || "-"),
               tahun: String(baris["TAHUN TERBIT"] || baris["Tahun Terbit"] || baris["Tahun"] || "-"),
@@ -135,82 +119,52 @@ export default function DaftarBuku({ isAdmin }) {
               kategori: String(baris["KLASIFIKASI"] || baris["Klasifikasi"] || baris["Kategori"] || "-"),
               stok: Number(baris["JUMLAH"] || baris["Jumlah"] || baris["Stok"] || 1),
               sampul: String(baris["Sampul URL"] || baris["SAMPUL URL"] || ""),
-              sumber: String(baris["Sumber"] || "-"),
+              sumber: String(baris["Sumber"] || baris["Asal"] || baris["SUMBER"] || "-"),
               createdAt: new Date(),
             });
             hitungBerhasil++;
           }
         }
         alert(`Laporan Impor Excel:\n✅ ${hitungBerhasil} Buku BARU dimasukkan.\n⚠️ ${hitungDilewati} Buku dilewati (duplikat).`);
-      } catch (error) { 
-        alert("Gagal membaca file Excel! Pastikan format file sudah benar."); 
-      } finally {
-        setIsImporting(false);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-      }
+      } catch (error) { alert("Gagal membaca file Excel!"); } 
+      finally { setIsImporting(false); if (fileInputRef.current) fileInputRef.current.value = ""; }
     };
     reader.readAsArrayBuffer(file);
   };
 
-  // ==============================================================
-  // EKSPOR EXCEL (MENGGUNAKAN EXCELJS AGAR OTOMATIS BERKOTAK)
-  // ==============================================================
   const handleExportExcel = async () => {
     const dataEkspor = bukuTerpilih.length > 0 ? bukuDifilter.filter(b => bukuTerpilih.includes(b.id)) : bukuDifilter;
     if (dataEkspor.length === 0) return alert("Katalog kosong, tidak ada data.");
-
     try {
       const ExcelJS = (await import("exceljs")).default;
       const FileSaver = (await import("file-saver")).default;
-
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Katalog Rangkang Pustaka");
-
       worksheet.columns = [
-        { header: "NO", key: "no", width: 6 },
-        { header: "NO REGISTRASI", key: "noBuku", width: 18 },
-        { header: "JUDUL", key: "judul", width: 40 },
-        { header: "PENULIS", key: "penulis", width: 25 },
-        { header: "PENERBIT", key: "penerbit", width: 30 },
-        { header: "KOTA TERBIT", key: "tempatTerbit", width: 20 },
-        { header: "TAHUN TERBIT", key: "tahun", width: 15 },
-        { header: "EDISI", key: "edisi", width: 10 },
-        { header: "ISBN", key: "isbn", width: 20 },
-        { header: "KLASIFIKASI", key: "kategori", width: 20 },
-        { header: "JUMLAH", key: "stok", width: 10 },
+        { header: "NO", key: "no", width: 6 }, { header: "NO REGISTRASI", key: "noBuku", width: 18 },
+        { header: "JUDUL", key: "judul", width: 40 }, { header: "PENULIS", key: "penulis", width: 25 },
+        { header: "PENERBIT", key: "penerbit", width: 30 }, { header: "KOTA TERBIT", key: "tempatTerbit", width: 20 },
+        { header: "TAHUN TERBIT", key: "tahun", width: 15 }, { header: "EDISI", key: "edisi", width: 10 },
+        { header: "ISBN", key: "isbn", width: 20 }, { header: "KLASIFIKASI", key: "kategori", width: 20 },
+        { header: "SUMBER", key: "sumber", width: 20 }, { header: "JUMLAH", key: "stok", width: 10 },
         { header: "Sampul URL", key: "sampul", width: 45 }
       ];
 
       dataEkspor.forEach((item, index) => {
         worksheet.addRow({
-          no: index + 1,
-          noBuku: item.noBuku || "-",
-          judul: item.judul || "-",
-          penulis: item.penulis || "-",
-          penerbit: item.penerbit || "-",
-          tempatTerbit: item.tempatTerbit || "-",
-          tahun: item.tahun || "-",
-          edisi: item.edisi || "-",
-          isbn: item.isbn || "-",
-          kategori: item.kategori || "-",
-          stok: item.stok || 1,
-          sampul: item.sampul || ""
+          no: index + 1, noBuku: item.noBuku || "-", judul: item.judul || "-", penulis: item.penulis || "-",
+          penerbit: item.penerbit || "-", tempatTerbit: item.tempatTerbit || "-", tahun: item.tahun || "-",
+          edisi: item.edisi || "-", isbn: item.isbn || "-", kategori: item.kategori || "-",
+          sumber: item.sumber || "-", stok: item.stok || 1, sampul: item.sampul || ""
         });
       });
 
-      const borderStyle = {
-        top: { style: 'thin', color: { argb: 'FF000000' } },
-        left: { style: 'thin', color: { argb: 'FF000000' } },
-        bottom: { style: 'thin', color: { argb: 'FF000000' } },
-        right: { style: 'thin', color: { argb: 'FF000000' } }
-      };
-
+      const borderStyle = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
       const headerRow = worksheet.getRow(1);
       headerRow.height = 28;
-      
       headerRow.eachCell((cell) => {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };
-        cell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FF000000' } };
+        cell.font = { name: 'Calibri', size: 11, bold: true };
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
         cell.border = borderStyle;
       });
@@ -219,23 +173,14 @@ export default function DaftarBuku({ isAdmin }) {
         if (rowNumber === 1) return; 
         row.height = 22;
         row.eachCell((cell, colNumber) => {
-          cell.font = { name: 'Calibri', size: 11 };
-          cell.border = borderStyle;
-          if (colNumber === 1 || colNumber === 7 || colNumber === 8 || colNumber === 11) {
-            cell.alignment = { vertical: 'middle', horizontal: 'center' }; 
-          } else {
-            cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true }; 
-          }
+          cell.font = { name: 'Calibri', size: 11 }; cell.border = borderStyle;
+          cell.alignment = { vertical: 'middle', horizontal: (colNumber === 1 || colNumber === 12) ? 'center' : 'left', wrapText: true }; 
         });
       });
-
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       FileSaver.saveAs(blob, "Database_Rangkang_Pustaka.xlsx");
-
-    } catch (error) {
-      alert("Gagal mengekspor data: " + error.message);
-    }
+    } catch (error) { alert("Gagal mengekspor data: " + error.message); }
   };
 
   const handleCetakLabel = () => {
@@ -264,11 +209,7 @@ export default function DaftarBuku({ isAdmin }) {
             <input type="text" placeholder="Cari judul..." value={kataKunci} onChange={(e) => setKataKunci(e.target.value)} className="w-full sm:w-56 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-[#8e0004]" />
             {isAdmin && (
               <div className="flex gap-2 flex-wrap">
-                {bukuTerpilih.length > 0 && (
-                  <button onClick={handleHapusBanyak} className="px-4 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 text-sm shadow-sm">
-                    🗑️ Hapus ({bukuTerpilih.length})
-                  </button>
-                )}
+                {bukuTerpilih.length > 0 && <button onClick={handleHapusBanyak} className="px-4 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 text-sm shadow-sm">🗑️ Hapus ({bukuTerpilih.length})</button>}
                 <button onClick={() => fileInputRef.current.click()} disabled={isImporting} className="px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 text-sm">📥 Import</button>
                 <button onClick={handleExportExcel} className="px-4 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 text-sm">📊 Export</button>
                 <button onClick={handleCetakLabel} className="px-4 py-2.5 bg-gray-800 text-white font-bold rounded-xl hover:bg-gray-900 text-sm">🏷️ Cetak</button>
@@ -308,13 +249,18 @@ export default function DaftarBuku({ isAdmin }) {
                       <input className="p-2 border rounded-lg bg-gray-50" placeholder="Kota Terbit" value={editTempatTerbit} onChange={(e) => setEditTempatTerbit(e.target.value)} />
                     </div>
                     
+                    {/* BAGIAN INI SUDAH SAYA TAMBAHKAN KOLOM ASAL/SUMBER */}
                     <div className="grid grid-cols-3 gap-2">
                       <input className="p-2 border rounded-lg bg-gray-50" placeholder="Tahun" value={editTahun} onChange={(e) => setEditTahun(e.target.value)} />
                       <input className="p-2 border rounded-lg bg-gray-50" placeholder="Edisi" value={editEdisi} onChange={(e) => setEditEdisi(e.target.value)} />
-                      <input className="p-2 border rounded-lg bg-gray-50" placeholder="Jumlah (Stok)" type="number" value={editStok} onChange={(e) => setEditStok(e.target.value)} />
+                      <input className="p-2 border rounded-lg bg-green-50 border-green-200" placeholder="Asal / Sumber" value={editSumber} onChange={(e) => setEditSumber(e.target.value)} />
                     </div>
                     
-                    <input className="p-2 border rounded-lg bg-gray-50" placeholder="ISBN" value={editIsbn} onChange={(e) => setEditIsbn(e.target.value)} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input className="p-2 border rounded-lg bg-gray-50" placeholder="Jumlah (Stok)" type="number" value={editStok} onChange={(e) => setEditStok(e.target.value)} />
+                      <input className="p-2 border rounded-lg bg-gray-50" placeholder="ISBN" value={editIsbn} onChange={(e) => setEditIsbn(e.target.value)} />
+                    </div>
+                    
                     <input className="p-2 border rounded-lg bg-gray-50" placeholder="URL Sampul" value={editSampul} onChange={(e) => setEditSampul(e.target.value)} />
                     
                     <div className="flex gap-2 justify-end mt-2">
@@ -351,7 +297,6 @@ export default function DaftarBuku({ isAdmin }) {
         )}
       </div>
 
-      {/* --- LAYER CETAK STIKER LABEL FISIK --- */}
       <div className="hidden print:flex flex-wrap gap-4 justify-start items-start">
         {bukuDifilter.filter(b => bukuTerpilih.includes(b.id)).map((item) => (
           <div key={`label-${item.id}`} className="w-[9cm] h-[4.5cm] border-[3px] border-black flex flex-col bg-white font-sans break-inside-avoid overflow-hidden" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact', color: 'black' }}>
@@ -365,11 +310,7 @@ export default function DaftarBuku({ isAdmin }) {
                 <p className="text-[12px] font-black leading-tight mt-0.5 uppercase tracking-wide text-black">Rangkang Pustaka</p>
               </div>
               <div className="w-[25%] flex items-center justify-center p-0.5 bg-white flex-shrink-0">
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&margin=1&data=${encodeURIComponent(`BUKU|${item.id}`)}`} 
-                  alt="QR Buku"
-                  className="w-full h-full object-contain" 
-                />
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&margin=1&data=${encodeURIComponent(`BUKU|${item.id}`)}`} alt="QR Buku" className="w-full h-full object-contain" />
               </div>
             </div>
 

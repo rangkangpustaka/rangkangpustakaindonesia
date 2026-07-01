@@ -12,10 +12,11 @@ import DaftarAbsensi from "@/components/DaftarAbsensi";
 import DashboardStats from "@/components/DashboardStats";
 import ScannerModal from "@/components/ScannerModal";
 import ManajemenPustakawan from "@/components/ManajemenPustakawan";
+import ManajemenKas from "@/components/ManajemenKas"; // KOMPONEN BARU DI-IMPORT
 
-import { auth, db } from "@/lib/firebase"; // Tambahkan db
+import { auth, db } from "@/lib/firebase"; 
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { collection, query, where, getDocs } from "firebase/firestore"; // Tambahkan alat Firestore
+import { collection, query, where, getDocs } from "firebase/firestore"; 
 
 export default function Home() {
   const [admin, setAdmin] = useState(null);
@@ -24,7 +25,6 @@ export default function Home() {
   const [loadingAuth, setLoadingAuth] = useState(false);
   const [tampilkanLogin, setTampilkanLogin] = useState(false);
   
-  // STATE BARU: Menyimpan Tipe Akses Admin Saat Login
   const [hakAksesAdmin, setHakAksesAdmin] = useState("");
 
   const [tampilkanKameraAdmin, setTampilkanKameraAdmin] = useState(false);
@@ -36,16 +36,14 @@ export default function Home() {
       setAdmin(user);
       if (user) {
         setTampilkanLogin(false);
-        setActiveTabAdmin("buku"); // Selalu kembali ke menu Katalog saat login
+        setActiveTabAdmin("buku"); 
         
-        // Cek Hak Akses di Database berdasarkan Email yang Login
         const q = query(collection(db, "pustakawan"), where("email", "==", user.email));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
           const adminData = querySnapshot.docs[0].data();
           setHakAksesAdmin(adminData.hakAkses || "Akses Besar"); 
         } else {
-          // Jika email login tidak ada di daftar admin, default jadi super admin
           setHakAksesAdmin("Akses Besar"); 
         }
       } else {
@@ -157,21 +155,20 @@ export default function Home() {
 
         {!admin && activeTabPublic === "absen" && <InputAbsensi />}
         
-        {/* STATISTIK HANYA MUNCUL UNTUK AKSES BESAR */}
         {admin && hakAksesAdmin === "Akses Besar" && <DashboardStats />}
 
         {admin && (
           <div className="w-full flex gap-2 mb-8 flex-wrap overflow-x-auto pb-2">
-            {/* SEMUA ADMIN BISA AKSES INI */}
             <button onClick={() => setActiveTabAdmin("buku")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "buku" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📚 Katalog</button>
             <button onClick={() => setActiveTabAdmin("sirkulasi")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "sirkulasi" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>🔄 Sirkulasi</button>
             
-            {/* MENU SPESIAL HANYA UNTUK AKSES BESAR */}
             {hakAksesAdmin === "Akses Besar" && (
               <>
                 <button onClick={() => setActiveTabAdmin("anggota")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "anggota" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>👥 Anggota</button>
                 <button onClick={() => setActiveTabAdmin("absen")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "absen" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📝 Absensi</button>
                 <button onClick={() => setActiveTabAdmin("pustakawan")} className={`flex-1 min-w-[120px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "pustakawan" ? "bg-gray-900 text-[#fec700] border-gray-900" : "bg-white text-gray-800 border-gray-200"}`}>🛡️ Pustakawan</button>
+                {/* TOMBOL BARU KEUANGAN */}
+                <button onClick={() => setActiveTabAdmin("kas")} className={`flex-1 min-w-[120px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "kas" ? "bg-emerald-700 text-white border-emerald-700 shadow-md" : "bg-white text-emerald-700 border-gray-200"}`}>💰 Keuangan</button>
               </>
             )}
           </div>
@@ -191,6 +188,8 @@ export default function Home() {
         {admin && hakAksesAdmin === "Akses Besar" && activeTabAdmin === "anggota" && <DaftarAnggota />}
         {admin && hakAksesAdmin === "Akses Besar" && activeTabAdmin === "absen" && <DaftarAbsensi />}
         {admin && hakAksesAdmin === "Akses Besar" && activeTabAdmin === "pustakawan" && <ManajemenPustakawan />}
+        {/* RENDER KOMPONEN KEUANGAN */}
+        {admin && hakAksesAdmin === "Akses Besar" && activeTabAdmin === "kas" && <ManajemenKas />}
       </div>
     </main>
   );

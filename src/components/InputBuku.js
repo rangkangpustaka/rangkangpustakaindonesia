@@ -11,10 +11,10 @@ export default function InputBuku() {
   const [penulis, setPenulis] = useState("");
   const [isbn, setIsbn] = useState("");
   const [penerbit, setPenerbit] = useState("");
-  const [tempatTerbit, setTempatTerbit] = useState("");
+  const [tempatTerbit, setTempatTerbit] = useState(""); 
   const [tahun, setTahun] = useState("");
-  const [edisi, setEdisi] = useState(""); // State Baru untuk Edisi
-  const [sumber, setSumber] = useState("");
+  const [edisi, setEdisi] = useState(""); 
+  const [sumber, setSumber] = useState(""); // State untuk Asal/Sumber
   const [stok, setStok] = useState("");
   const [sampul, setSampul] = useState("");
   
@@ -34,8 +34,8 @@ export default function InputBuku() {
         penerbit: penerbit || "-",
         tempatTerbit: tempatTerbit || "-",
         tahun: tahun || "-",
-        edisi: edisi || "-", // Simpan Edisi ke database
-        sumber: sumber || "-",
+        edisi: edisi || "-", 
+        sumber: sumber || "-", // Menyimpan Asal/Sumber ke database
         stok: Number(stok) || 1,
         sampul: sampul || "",
         createdAt: serverTimestamp(),
@@ -62,7 +62,7 @@ export default function InputBuku() {
       </h2>
 
       {sukses && (
-        <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 rounded-r-xl">
+        <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 rounded-r-xl animate-in slide-in-from-top duration-300">
           <p className="font-bold text-green-800">✅ Buku berhasil ditambahkan ke dalam katalog!</p>
         </div>
       )}
@@ -72,19 +72,19 @@ export default function InputBuku() {
         {/* BARIS 1 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-bold text-gray-700 mb-1 block">No. Registrasi / Klasifikasi</label>
-            <input type="text" value={noBuku} onChange={(e) => setNoBuku(e.target.value)} placeholder="Contoh: 600" className="w-full p-3 border-2 rounded-xl bg-gray-50 focus:border-blue-600 outline-none text-sm transition-all" />
+            <label className="text-xs font-bold text-gray-700 mb-1 block">No. Registrasi (Stiker)</label>
+            <input type="text" value={noBuku} onChange={(e) => setNoBuku(e.target.value)} placeholder="Contoh: 813" className="w-full p-3 border-2 rounded-xl bg-gray-50 focus:border-blue-600 outline-none text-sm transition-all font-bold text-blue-700" />
           </div>
           <div>
             <label className="text-xs font-bold text-gray-700 mb-1 block">Kategori / Klasifikasi</label>
-            <input type="text" value={kategori} onChange={(e) => setKategori(e.target.value)} placeholder="Contoh: Buku Anak" className="w-full p-3 border-2 rounded-xl bg-gray-50 focus:border-blue-600 outline-none text-sm transition-all" />
+            <input type="text" value={kategori} onChange={(e) => setKategori(e.target.value)} placeholder="Contoh: Buku Anak / Fiksi" className="w-full p-3 border-2 rounded-xl bg-gray-50 focus:border-blue-600 outline-none text-sm transition-all" />
           </div>
         </div>
 
         {/* BARIS 2 */}
         <div>
           <label className="text-xs font-bold text-gray-700 mb-1 block">Judul Buku *</label>
-          <input type="text" required value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Contoh: Laskar Pelangi" className="w-full p-3 border-2 rounded-xl bg-gray-50 focus:border-blue-600 outline-none text-sm font-bold transition-all" />
+          <input type="text" required value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Contoh: Laskar Pelangi" className="w-full p-3 border-2 rounded-xl bg-gray-50 focus:border-blue-600 outline-none text-sm font-black text-gray-900 transition-all" />
         </div>
 
         {/* BARIS 3 */}
@@ -106,41 +106,41 @@ export default function InputBuku() {
             <input type="text" value={penerbit} onChange={(e) => setPenerbit(e.target.value)} placeholder="Contoh: Bentang Pustaka" className="w-full p-3 border-2 rounded-xl bg-gray-50 focus:border-blue-600 outline-none text-sm transition-all" />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-700 mb-1 block">Kota / Tempat Terbit</label>
+            <label className="text-xs font-bold text-gray-700 mb-1 block">Kota Tempat Terbit</label>
             <input type="text" value={tempatTerbit} onChange={(e) => setTempatTerbit(e.target.value)} placeholder="Contoh: Yogyakarta" className="w-full p-3 border-2 rounded-xl bg-gray-50 focus:border-blue-600 outline-none text-sm transition-all" />
           </div>
         </div>
 
-        {/* BARIS 5 (Ada tambahan kolom Edisi di sini) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* BARIS 5: TAHUN, EDISI, DAN ASAL/SUMBER */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-2 border-indigo-50 bg-indigo-50/30 p-3 rounded-xl">
           <div>
             <label className="text-xs font-bold text-gray-700 mb-1 block">Tahun Terbit</label>
-            <input type="text" value={tahun} onChange={(e) => setTahun(e.target.value)} placeholder="Contoh: 2024" className="w-full p-3 border-2 rounded-xl bg-gray-50 focus:border-blue-600 outline-none text-sm transition-all" />
+            <input type="text" value={tahun} onChange={(e) => setTahun(e.target.value)} placeholder="Contoh: 2024" className="w-full p-3 border-2 rounded-xl bg-white focus:border-blue-600 outline-none text-sm transition-all" />
           </div>
           <div>
-            <label className="text-xs font-bold text-blue-700 mb-1 block">Edisi (BARU)</label>
-            <input type="text" value={edisi} onChange={(e) => setEdisi(e.target.value)} placeholder="Contoh: 2024" className="w-full p-3 border-2 rounded-xl bg-blue-50 border-blue-200 focus:border-blue-600 outline-none text-sm transition-all" />
+            <label className="text-xs font-bold text-gray-700 mb-1 block">Edisi / Cetakan</label>
+            <input type="text" value={edisi} onChange={(e) => setEdisi(e.target.value)} placeholder="Contoh: Cetakan Ke-3" className="w-full p-3 border-2 rounded-xl bg-white focus:border-blue-600 outline-none text-sm transition-all" />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-700 mb-1 block">Sumber Buku</label>
-            <input type="text" value={sumber} onChange={(e) => setSumber(e.target.value)} placeholder="Contoh: Donasi" className="w-full p-3 border-2 rounded-xl bg-gray-50 focus:border-blue-600 outline-none text-sm transition-all" />
+            <label className="text-xs font-bold text-indigo-700 mb-1 block">Asal / Sumber Buku</label>
+            <input type="text" value={sumber} onChange={(e) => setSumber(e.target.value)} placeholder="Contoh: Donasi, Dana Desa" className="w-full p-3 border-2 border-indigo-200 rounded-xl bg-white focus:border-indigo-600 outline-none text-sm transition-all font-bold" />
           </div>
         </div>
 
         {/* BARIS 6 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
           <div>
             <label className="text-xs font-bold text-gray-700 mb-1 block">Jumlah Stok *</label>
             <input type="number" required value={stok} onChange={(e) => setStok(e.target.value)} placeholder="Contoh: 5" className="w-full p-3 border-2 rounded-xl bg-gray-50 focus:border-blue-600 outline-none text-sm transition-all" />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-700 mb-1 block">URL Sampul Gambar</label>
+            <label className="text-xs font-bold text-gray-700 mb-1 block">URL Sampul Gambar (Opsional)</label>
             <input type="text" value={sampul} onChange={(e) => setSampul(e.target.value)} placeholder="https://link.com/gambar.jpg" className="w-full p-3 border-2 rounded-xl bg-gray-50 focus:border-blue-600 outline-none text-sm transition-all" />
           </div>
         </div>
 
-        <button type="submit" disabled={loading} className="w-full mt-4 py-4 bg-[#2563eb] text-white font-bold rounded-xl hover:bg-blue-800 transition-all shadow-md text-sm sm:text-base">
-          {loading ? "Menyimpan..." : "Masukkan ke Katalog"}
+        <button type="submit" disabled={loading} className="w-full mt-4 py-4 bg-[#8e0004] text-white font-black tracking-widest rounded-xl hover:bg-red-800 transition-all shadow-md text-sm sm:text-base uppercase">
+          {loading ? "Menyimpan Data..." : "Masukkan ke Katalog"}
         </button>
       </form>
     </div>

@@ -2,214 +2,254 @@
 "use client";
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, onSnapshot, query, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, doc, getDoc, setDoc, serverTimestamp, getDocs } from "firebase/firestore";
 import ScannerModal from "./ScannerModal";
 
 export default function InputPeminjaman() {
-  // State Peminjam
-  const [namaPeminjam, setNamaPeminjam] = useState("");
-  const [kontak, setKontak] = useState("");
-  
-  // State Database (Untuk Fitur Ketik Manual / Mesin Pencari)
-  const [daftarAnggota, setDaftarAnggota] = useState([]);
-  const [tampilSaranAnggota, setTampilSaranAnggota] = useState(false);
-  const [katalogBuku, setKatalogBuku] = useState([]);
-  const [pencarianBuku, setPencarianBuku] = useState("");
-  const [bukuTerpilih, setBukuTerpilih] = useState([]); 
+  const [lamaPinjam, setLamaPinjam] = useState(7);
+  const [dendaPerHari, setDendaPerHari] = useState(1000);
+  const [loadingAturan, setLoadingAturan] = useState(true);
 
-  const [loading, setLoading] = useState(false);
-  const [sukses, setSukses] = useState(false);
-  const [modeKamera, setModeKamera] = useState(null); // 'anggota' atau 'buku'
+  const [nomorAnggota, setNomorAnggota] = useState("");
+  const [namaPeminjam, setNamaPeminjam] = useState("");
+  const [bukuTerpilih, setBukuTerpilih] = useState([]); 
+  const [loadingPinjam, setLoadingPinjam] = useState(false);
+
+  const [scanMode, setScanMode] = useState(null); 
+  const [bukuList, setBukuList] = useState([]);
+  
+  // STATE BARU: Untuk pencarian buku manual & kalender
+  const [kataKunciBuku, setKataKunciBuku] = useState("");
+  const [hasilCariBuku, setHasilCariBuku] = useState([]);
+  const [tglJatuhTempoManual, setTglJatuhTempoManual] = useState("");
+  const [minDate, setMinDate] = useState("");
 
   useEffect(() => {
-    // 1. Tarik Data Buku untuk Pencarian Manual
-    const unsubBuku = onSnapshot(query(collection(db, "buku")), (snapshot) => {
-      const dataBuku = [];
-      snapshot.forEach((doc) => dataBuku.push({ id: doc.id, ...doc.data() }));
-      setKatalogBuku(dataBuku);
-    });
-    // 2. Tarik Data Anggota untuk Pencarian Manual
-    const unsubAnggota = onSnapshot(query(collection(db, "anggota")), (snapshot) => {
-      const dataAnggota = [];
-      snapshot.forEach((doc) => dataAnggota.push({ id: doc.id, ...doc.data() }));
-      setDaftarAnggota(dataAnggota);
-    });
-    return () => { unsubBuku(); unsubAnggota(); };
+    // Kunci Kalender agar tidak bisa milih tanggal masa lalu
+    const today = new Date();
+    setMinDate(today.toISOString().split('T')[0]);
+
+    const ambilAturan = async () => {
+      try {
+        const docRef = doc(db, "settings", "sirkulasi");
+        const docSnap = await getDoc(docRef);
+        let durasi = 7;
+        if (docSnap.exists()) {
+          durasi = docSnap.data().lamaPinjam || 7;
+          setLamaPinjam(durasi);
+          setDendaPerHari(docSnap.data().dendaPerHari || 1000);
+        }
+        
+        // Mengatur default kalender berdasarkan Aturan Sirkulasi
+        const defaultKembali = new Date();
+        defaultKembali.setDate(defaultKembali.getDate() + durasi);
+        setTglJatuhTempoManual(defaultKembali.toISOString().split('T')[0]);
+
+        const snapBuku = await getDocs(collection(db, "buku"));
+        const list = [];
+        snapBuku.forEach(d => list.push({ id: d.id, ...d.data() }));
+        setBukuList(list);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoadingAturan(false);
+      }
+    };
+    ambilAturan();
   }, []);
 
-  // ================= LOGIKA MESIN PENCARI (KETIK MANUAL) =================
-  const hasilPencarianAnggota = namaPeminjam === "" ? [] : daftarAnggota.filter(a => 
-    a.nama?.toLowerCase().includes(namaPeminjam.toLowerCase())
-  ).slice(0, 5);
-
-  const handlePilihAnggota = (anggota) => {
-    setNamaPeminjam(anggota.nama);
-    setKontak(anggota.noHp || anggota.kontak || anggota.alamat || ""); 
-    setTampilSaranAnggota(false);
-  };
-
-  const hasilPencarianBuku = pencarianBuku === "" ? [] : katalogBuku.filter(b => 
-    b.judul?.toLowerCase().includes(pencarianBuku.toLowerCase()) || 
-    (b.noBuku && b.noBuku.toLowerCase().includes(pencarianBuku.toLowerCase()))
-  ).slice(0, 5);
+  // FITUR CARI BUKU MANUAL
+  useEffect(() => {
+    if (kataKunciBuku.length > 1) {
+      const keyword = kataKunciBuku.toLowerCase();
+      const filtered = bukuList.filter(b => 
+        (b.judul && b.judul.toLowerCase().includes(keyword)) || 
+        (b.noBuku && b.noBuku.toLowerCase().includes(keyword))
+      ).slice(0, 5); // Tampilkan maksimal 5 saran
+      setHasilCariBuku(filtered);
+    } else {
+      setHasilCariBuku([]);
+    }
+  }, [kataKunciBuku, bukuList]);
 
   const handlePilihBukuManual = (buku) => {
-    if (!bukuTerpilih.find(b => b.id === buku.id)) {
-      setBukuTerpilih([...bukuTerpilih, buku]);
+    if (bukuTerpilih.some(b => b.id === buku.id)) {
+      alert("Buku ini sudah ada di keranjang!");
+    } else {
+      setBukuTerpilih(prev => [...prev, { id: buku.id, judul: buku.judul, noBuku: buku.noBuku }]);
     }
-    setPencarianBuku(""); 
+    setKataKunciBuku(""); // Bersihkan kolom pencarian setelah dipilih
+    setHasilCariBuku([]);
   };
-  // =======================================================================
 
-
-  // ================= LOGIKA SCANNER KAMERA =================
-  const handleScanBerhasil = (dataQR) => {
-    setModeKamera(null);
-    if (dataQR.startsWith("ANGGOTA|")) {
-      const dataPisah = dataQR.split("|");
-      setNamaPeminjam(dataPisah[2]); 
-      setKontak(dataPisah[3]);
-    } 
-    else if (dataQR.startsWith("BUKU|")) {
-      const idBuku = dataQR.split("|")[1];
-      const bukuDitemukan = katalogBuku.find(b => b.id === idBuku);
-      if (bukuDitemukan) {
-        if (!bukuTerpilih.find(b => b.id === bukuDitemukan.id)) setBukuTerpilih(prev => [...prev, bukuDitemukan]);
-        else alert("Buku ini sudah ada di dalam keranjang!");
-      } else {
-        alert("Buku tidak ditemukan di database!");
-      }
-    } 
-    else {
-      alert("⚠️ QR Code tidak dikenali!");
-    }
-  };
-  // =========================================================
-
-  const handleHapusDariKeranjang = (id) => setBukuTerpilih(bukuTerpilih.filter(b => b.id !== id));
-
-  const handleSubmit = async (e) => {
+  const handleSimpanAturan = async (e) => {
     e.preventDefault();
-    if (bukuTerpilih.length === 0) return alert("Belum ada buku yang di-scan/pilih!");
-    setLoading(true);
+    try {
+      await setDoc(doc(db, "settings", "sirkulasi"), {
+        lamaPinjam: Number(lamaPinjam),
+        dendaPerHari: Number(dendaPerHari)
+      });
+      // Update kalender manual setelah ganti aturan global
+      const date = new Date();
+      date.setDate(date.getDate() + Number(lamaPinjam));
+      setTglJatuhTempoManual(date.toISOString().split('T')[0]);
+      
+      alert("✅ Setelan aturan sirkulasi berhasil diperbarui!");
+    } catch (err) {
+      alert("Gagal menyimpan aturan: " + err.message);
+    }
+  };
+
+  const handleHasilScan = (dataQR) => {
+    setScanMode(null);
+    if (dataQR.startsWith("ANGGOTA|")) {
+      const parts = dataQR.split("|");
+      setNomorAnggota(parts[1]); setNamaPeminjam(parts[2]);
+    } else if (dataQR.startsWith("BUKU|")) {
+      const parts = dataQR.split("|");
+      const idBuku = parts[1];
+      const targetBuku = bukuList.find(b => b.id === idBuku);
+      if (!targetBuku) return alert("⚠️ Buku tidak terdaftar!");
+      if (bukuTerpilih.some(b => b.id === idBuku)) return alert("Buku ini sudah di-scan.");
+      setBukuTerpilih(prev => [...prev, { id: targetBuku.id, judul: targetBuku.judul, noBuku: targetBuku.noBuku }]);
+    } else {
+      alert("⚠️ Barcode tidak dikenali oleh sistem sirkulasi!");
+    }
+  };
+
+  const handleCheckoutPinjam = async (e) => {
+    e.preventDefault();
+    if (!namaPeminjam || bukuTerpilih.length === 0) return alert("Lengkapi data peminjam dan pilih minimal 1 buku!");
+    if (!tglJatuhTempoManual) return alert("Pilih tanggal pengembalian!");
+
+    setLoadingPinjam(true);
     try {
       const tglPinjam = new Date();
-      const tglTenggat = new Date();
-      tglTenggat.setDate(tglPinjam.getDate() + 7); // Default 7 hari pinjam
+      // Menggunakan tanggal dari Input Kalender
+      const tglJatuhTempo = new Date(tglJatuhTempoManual);
+      tglJatuhTempo.setHours(23, 59, 59); // Set waktu ke akhir hari tersebut
 
-      for (const buku of bukuTerpilih) {
-        await addDoc(collection(db, "peminjaman"), {
-          namaPeminjam, kontak: kontak || "-",
-          judulBuku: buku.judul, noBuku: buku.noBuku || "-",
-          tanggalPinjam: tglPinjam.toLocaleDateString("id-ID"),
-          tenggatWaktu: tglTenggat.toLocaleDateString("id-ID"),
-          timestampTenggat: tglTenggat.getTime(),
-          status: "Dipinjam", createdAt: serverTimestamp(),
-        });
-      }
-      setNamaPeminjam(""); setKontak(""); setBukuTerpilih([]); setPencarianBuku("");
-      setSukses(true); setTimeout(() => setSukses(false), 4000);
-    } catch (error) { alert("Error: " + error.message); } finally { setLoading(false); }
+      await addDoc(collection(db, "peminjaman"), {
+        nomorAnggota: nomorAnggota || "NON-MEMBER",
+        namaPeminjam,
+        buku: bukuTerpilih,
+        tanggalPinjam: tglPinjam.toLocaleDateString("id-ID"),
+        tanggalJatuhTempo: tglJatuhTempo.toLocaleDateString("id-ID"),
+        rawJatuhTempo: tglJatuhTempo,
+        status: "Dipinjam",
+        createdAt: serverTimestamp()
+      });
+
+      alert(`🎉 Sukses! Buku harus dikembalikan pada: ${tglJatuhTempo.toLocaleDateString("id-ID")}`);
+      setNomorAnggota(""); setNamaPeminjam(""); setBukuTerpilih([]); setKataKunciBuku("");
+    } catch (err) {
+      alert("Gagal melakukan sirkulasi: " + err.message);
+    } finally {
+      setLoadingPinjam(false);
+    }
   };
 
   return (
-    <div className="w-full max-w-2xl bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-      
-      {/* KAMERA POP-UP */}
-      {modeKamera && <ScannerModal title={`Scan QR ${modeKamera === 'anggota' ? 'Kartu Anggota' : 'Stiker Buku'}`} onScan={handleScanBerhasil} onClose={() => setModeKamera(null)} />}
+    <div className="w-full flex flex-col md:flex-row gap-6 max-w-4xl">
+      {scanMode && <ScannerModal title={`Scan QR ${scanMode}`} onScan={handleHasilScan} onClose={() => setScanMode(null)} />}
 
-      <h2 className="text-xl font-black text-gray-800 mb-6 border-b pb-4 flex items-center gap-2"><span>📖</span> Input Sirkulasi Peminjaman</h2>
-      
-      {sukses && <div className="mb-6 p-4 bg-green-50 border text-green-700 rounded-xl font-bold">✅ {bukuTerpilih.length} Transaksi dicatat!</div>}
-      
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        
-        {/* BAGIAN 1: IDENTITAS PEMINJAM (SCAN & KETIK MANUAL) */}
-        <div className="bg-orange-50 p-4 rounded-xl border border-orange-200">
-          <div className="flex justify-between items-center mb-3">
-            <label className="text-xs font-bold text-orange-900 uppercase tracking-wider">1. Identitas Peminjam</label>
-            <button type="button" onClick={() => setModeKamera("anggota")} className="px-3 py-1 bg-orange-600 text-white text-xs font-bold rounded-md shadow hover:bg-orange-700 transition-all flex items-center gap-1">📷 Scan Kartu</button>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
-            <div className="relative w-full">
-              <input 
-                type="text" required 
-                value={namaPeminjam} 
-                onChange={(e) => { setNamaPeminjam(e.target.value); setTampilSaranAnggota(true); }}
-                onFocus={() => setTampilSaranAnggota(true)}
-                placeholder="🔍 Ketik nama anggota..." 
-                className="w-full p-3 border-2 border-orange-200 bg-white rounded-xl outline-none text-sm focus:border-[#8e0004] transition-all" 
-              />
-              {/* Dropdown Pencarian Nama */}
-              {tampilSaranAnggota && hasilPencarianAnggota.length > 0 && (
-                <div className="absolute z-30 w-full mt-1 bg-white border-2 border-[#8e0004]/20 rounded-xl shadow-xl overflow-hidden">
-                  {hasilPencarianAnggota.map(anggota => (
-                    <div key={anggota.id} onClick={() => handlePilihAnggota(anggota)} className="p-3 border-b hover:bg-orange-50 cursor-pointer flex justify-between items-center transition-colors">
-                      <div>
-                        <p className="text-sm font-bold text-gray-800">{anggota.nama}</p>
-                        <p className="text-[10px] font-bold text-orange-600 mt-0.5">Kontak/Alamat: {anggota.noHp || anggota.kontak || anggota.alamat || "-"}</p>
-                      </div>
-                      <span className="text-xs font-black text-[#8e0004] bg-orange-100 px-2 py-1 rounded">Pilih</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+      {/* BOX SEBELAH KIRI: SETELAN ATURAN */}
+      <div className="w-full md:w-[320px] bg-white p-5 rounded-2xl shadow-sm border border-gray-100 h-fit">
+        <h3 className="font-black text-gray-800 text-sm uppercase tracking-wider mb-3 flex items-center gap-2 text-blue-700">
+          <span>⚙️</span> Aturan Sirkulasi Global
+        </h3>
+        {loadingAturan ? <p className="text-xs animate-pulse text-gray-400">Memuat setelan...</p> : (
+          <form onSubmit={handleSimpanAturan} className="flex flex-col gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Durasi Pinjam (Hari)</label>
+              <input type="number" required value={lamaPinjam} onChange={(e) => setLamaPinjam(e.target.value)} className="p-2 border-2 rounded-xl w-full text-sm font-bold bg-gray-50 focus:border-blue-600 outline-none" />
             </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tarif Denda / Hari (Rp)</label>
+              <input type="number" required value={dendaPerHari} onChange={(e) => setDendaPerHari(e.target.value)} className="p-2 border-2 rounded-xl w-full text-sm font-bold bg-gray-50 focus:border-blue-600 outline-none" />
+            </div>
+            <button type="submit" className="py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-all shadow-sm">
+              💾 Terapkan Setelan
+            </button>
+          </form>
+        )}
+      </div>
 
-            <input type="text" value={kontak} onChange={(e) => setKontak(e.target.value)} placeholder="Kontak / Alamat..." className="w-full p-3 border-2 border-orange-200 bg-white rounded-xl outline-none text-sm focus:border-[#8e0004]" />
-          </div>
+      {/* BOX SEBELAH KANAN: FORM TRANSAKSI */}
+      <div className="flex-1 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h2 className="text-lg font-black text-gray-800 mb-4 border-b pb-3 flex items-center gap-2">
+          <span>🔄</span> Registrasi Peminjaman Buku
+        </h2>
+
+        <div className="flex gap-2 mb-4">
+          <button onClick={() => setScanMode('anggota')} className="flex-1 py-3 bg-orange-600 text-white font-bold text-xs rounded-xl hover:bg-orange-700 transition-all shadow-sm flex items-center justify-center gap-2">
+            📷 SCAN KARTU ANGGOTA
+          </button>
+          <button onClick={() => setScanMode('buku')} className="flex-1 py-3 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-all shadow-sm flex items-center justify-center gap-2">
+            📷 SCAN BUKU
+          </button>
         </div>
 
-        {/* BAGIAN 2: KERANJANG BUKU (SCAN & KETIK MANUAL) */}
-        <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-200">
-          <div className="flex justify-between items-center mb-3">
-            <label className="text-xs font-bold text-indigo-900 uppercase tracking-wider">2. Buku Yang Dipinjam ({bukuTerpilih.length})</label>
-            <button type="button" onClick={() => setModeKamera("buku")} className="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-md shadow hover:bg-indigo-700 transition-all flex items-center gap-1">📷 Scan Buku</button>
+        {/* KOLOM PENCARIAN BUKU MANUAL */}
+        <div className="relative mb-5">
+          <div className="flex items-center gap-2 p-2.5 border-2 rounded-xl bg-indigo-50 border-indigo-100">
+            <span className="text-indigo-500 font-bold px-1">🔍</span>
+            <input type="text" placeholder="Atau ketik & cari judul buku secara manual..." value={kataKunciBuku} onChange={(e) => setKataKunciBuku(e.target.value)} className="w-full bg-transparent outline-none text-xs font-bold text-gray-700" />
           </div>
-          
-          <div className="relative mb-3 w-full">
+          {/* Hasil Dropdown */}
+          {hasilCariBuku.length > 0 && (
+            <div className="absolute top-12 left-0 w-full bg-white border-2 border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+              {hasilCariBuku.map(b => (
+                <div key={b.id} onClick={() => handlePilihBukuManual(b)} className="p-3 border-b hover:bg-indigo-50 cursor-pointer flex justify-between items-center transition-all">
+                  <p className="text-xs font-bold text-gray-800">{b.judul}</p>
+                  <span className="text-[10px] font-bold bg-gray-200 px-2 py-0.5 rounded-md">{b.noBuku || "-"}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleCheckoutPinjam} className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            <input type="text" placeholder="NIA Anggota (Otomatis)" value={nomorAnggota} onChange={(e) => setNomorAnggota(e.target.value)} className="p-3 border rounded-xl bg-gray-100 text-xs font-bold outline-none" />
+            <input type="text" required placeholder="Nama Lengkap Peminjam" value={namaPeminjam} onChange={(e) => setNamaPeminjam(e.target.value)} className="p-3 border-2 rounded-xl bg-gray-50 text-xs font-bold outline-none focus:border-blue-600" />
+          </div>
+
+          <div className="border-2 border-dashed rounded-xl p-3 bg-gray-50 min-h-[100px]">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Keranjang Buku Yang Dipinjam ({bukuTerpilih.length})</p>
+            {bukuTerpilih.length === 0 ? (
+              <p className="text-xs text-gray-400 italic py-4 text-center">Keranjang masih kosong...</p>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                {bukuTerpilih.map((b, idx) => (
+                  <div key={idx} className="flex justify-between items-center bg-white p-2 border rounded-lg shadow-sm text-xs">
+                    <p className="font-bold text-gray-800"><span className="text-[#8e0004] mr-1">[{b.noBuku}]</span> {b.judul}</p>
+                    <button type="button" onClick={() => setBukuTerpilih(prev => prev.filter((_, i) => i !== idx))} className="text-red-500 font-bold px-1 hover:bg-red-50 rounded">✖</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* KALENDER TANGGAL JATUH TEMPO */}
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tanggal Batas Pengembalian</label>
             <input 
-              type="text" 
-              value={pencarianBuku} 
-              onChange={(e) => setPencarianBuku(e.target.value)} 
-              placeholder="🔍 Atau ketik judul / No. Buku manual..." 
-              className="w-full p-3 border-2 border-indigo-200 bg-white rounded-xl focus:border-indigo-600 outline-none text-sm font-medium transition-all" 
+              type="date" 
+              required 
+              min={minDate} 
+              value={tglJatuhTempoManual} 
+              onChange={(e) => setTglJatuhTempoManual(e.target.value)} 
+              className="w-full p-3 border-2 rounded-xl bg-gray-50 text-sm font-bold outline-none cursor-pointer focus:border-blue-600" 
             />
-            {/* Dropdown Pencarian Buku */}
-            {hasilPencarianBuku.length > 0 && (
-              <div className="absolute z-20 w-full mt-1 bg-white border-2 border-indigo-100 rounded-xl shadow-xl overflow-hidden">
-                {hasilPencarianBuku.map(buku => (
-                  <div key={buku.id} onClick={() => handlePilihBukuManual(buku)} className="p-3 border-b hover:bg-indigo-50 cursor-pointer flex justify-between items-center transition-colors">
-                    <div>
-                      <p className="text-sm font-bold text-gray-800">{buku.judul}</p>
-                      <p className="text-[10px] font-bold text-indigo-600 mt-0.5 uppercase tracking-wider">No: {buku.noBuku || "-"}</p>
-                    </div>
-                    <span className="text-xl font-bold text-indigo-400">+</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <p className="text-[10px] text-gray-400 mt-1">*Bisa diubah secara manual dengan klik logo kalender.</p>
           </div>
 
-          <div className="bg-white border-2 border-dashed border-indigo-300 p-4 rounded-xl min-h-[80px]">
-            {bukuTerpilih.length === 0 ? <p className="text-sm text-gray-400 italic text-center">Buku yang dipilih akan masuk ke keranjang ini.</p> : (
-              <div className="flex flex-col gap-2">
-                {bukuTerpilih.map((buku) => (
-                  <div key={buku.id} className="flex justify-between bg-gray-50 p-2.5 rounded-lg border shadow-sm items-center">
-                    <p className="text-sm font-bold text-[#8e0004] truncate">{buku.judul}</p>
-                    <button type="button" onClick={() => handleHapusDariKeranjang(buku.id)} className="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-md font-bold hover:bg-red-500 hover:text-white transition-all">✕</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <button type="submit" disabled={loading} className="w-full py-4 bg-[#8e0004] text-white font-black rounded-xl hover:bg-red-900 shadow-md transition-all active:translate-y-1">
-          {loading ? "Memproses..." : `🚀 Simpan ${bukuTerpilih.length > 0 ? bukuTerpilih.length + ' Transaksi' : 'Transaksi'}`}
-        </button>
-      </form>
+          <button type="submit" disabled={loadingPinjam} className="w-full py-3.5 bg-gray-800 text-white font-bold rounded-xl hover:bg-black text-sm uppercase tracking-wider shadow-md">
+            {loadingPinjam ? "Memproses..." : "🔒 Konfirmasi Pinjam"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
