@@ -4,11 +4,10 @@ import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
 
-export default function DaftarAnggota() {
+export default function DaftarAnggota({ hakAksesAdmin }) {
   const [anggota, setAnggota] = useState([]);
   const [loading, setLoading] = useState(true);
   const [kataKunci, setKataKunci] = useState("");
-  
   const [anggotaTerpilih, setAnggotaTerpilih] = useState([]);
 
   const [editId, setEditId] = useState(null);
@@ -37,23 +36,15 @@ export default function DaftarAnggota() {
   };
 
   const handleEditClick = (item) => {
-    setEditId(item.id); 
-    setEditNama(item.nama); 
-    setEditKontak(item.kontak || ""); 
-    setEditAlamat(item.alamat || "");
+    setEditId(item.id); setEditNama(item.nama); 
+    setEditKontak(item.kontak || ""); setEditAlamat(item.alamat || "");
   };
 
   const handleUpdate = async (id) => {
     try {
-      await updateDoc(doc(db, "anggota", id), { 
-        nama: editNama, 
-        kontak: editKontak, 
-        alamat: editAlamat 
-      });
+      await updateDoc(doc(db, "anggota", id), { nama: editNama, kontak: editKontak, alamat: editAlamat });
       setEditId(null);
-    } catch (error) {
-      alert("Gagal memperbarui data anggota: " + error.message);
-    }
+    } catch (error) { alert("Gagal memperbarui data: " + error.message); }
   };
 
   const handleTogglePilih = (id) => {
@@ -65,32 +56,18 @@ export default function DaftarAnggota() {
     else setAnggotaTerpilih(anggotaDifilter.map(a => a.id)); 
   };
 
-  // ==========================================
-  // FITUR CETAK KARTU + INTEGRASI KAS KEUANGAN
-  // ==========================================
   const handleCetakKartu = async () => {
     if (anggotaTerpilih.length === 0) return alert("Centang minimal 1 anggota untuk dicetak kartunya!");
-    
-    // Ajukan pertanyaan kas otomatis sebelum cetak lembar fisik
-    if (window.confirm(`Apakah Anda ingin mencatat biaya pembuatan fisik untuk ${anggotaTerpilih.length} kartu ini ke Buku Kas Keuangan? (Infaq Rp5.000 / kartu)`)) {
+    if (window.confirm(`Catat biaya pembuatan fisik untuk ${anggotaTerpilih.length} kartu ini ke Buku Kas Keuangan? (Infaq Rp5.000 / kartu)`)) {
       try {
         const totalBiayaCetak = anggotaTerpilih.length * 5000;
-        
-        // Suntik data ke kas otomatis
         await addDoc(collection(db, "kas"), {
-          tipe: "Pemasukan",
-          kategori: "Cetak Kartu Anggota",
-          nominal: totalBiayaCetak,
-          keterangan: `Otomatis: Pembuatan kartu fisik anggota (${anggotaTerpilih.length} orang)`,
-          createdAt: serverTimestamp() 
+          tipe: "Pemasukan", kategori: "Cetak Kartu Anggota", nominal: totalBiayaCetak,
+          keterangan: `Otomatis: Pembuatan kartu fisik anggota (${anggotaTerpilih.length} orang)`, createdAt: serverTimestamp() 
         });
-        alert(`💰 Kas Berhasil Dicatat! Pemasukan sebesar Rp${totalBiayaCetak.toLocaleString("id-ID")} telah dibukukan.`);
-      } catch (e) {
-        alert("Gagal mencatat kas otomatis: " + e.message);
-      }
+        alert(`💰 Kas Berhasil Dicatat! Pemasukan Rp${totalBiayaCetak.toLocaleString("id-ID")} telah dibukukan.`);
+      } catch (e) { alert("Gagal mencatat kas otomatis: " + e.message); }
     }
-    
-    // Setelah konfirmasi kas selesai, baru jendela print terbuka
     window.print(); 
   };
 
@@ -98,8 +75,7 @@ export default function DaftarAnggota() {
     const keyword = kataKunci.toLowerCase();
     return (
       item.nama?.toLowerCase().includes(keyword) || 
-      item.nomorAnggota?.toLowerCase().includes(keyword) ||
-      item.alamat?.toLowerCase().includes(keyword)
+      item.nomorAnggota?.toLowerCase().includes(keyword) || item.alamat?.toLowerCase().includes(keyword)
     );
   });
 
@@ -107,8 +83,6 @@ export default function DaftarAnggota() {
 
   return (
     <div className="w-full mt-4 print:mt-0">
-      
-      {/* TAMPILAN DASHBOARD WEB (Sembunyi Saat Cetak) */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 print:hidden">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4 gap-4">
           <div>
@@ -134,7 +108,6 @@ export default function DaftarAnggota() {
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {anggotaDifilter.map((item) => (
               <div key={item.id} className={`p-4 border-2 rounded-2xl shadow-sm relative transition-all ${anggotaTerpilih.includes(item.id) ? 'bg-indigo-50/50 border-indigo-400' : 'bg-white border-gray-100 hover:border-gray-300'}`}>
-                
                 <div className="absolute top-4 right-4 z-10">
                   <input type="checkbox" className="w-5 h-5 cursor-pointer accent-indigo-600" checked={anggotaTerpilih.includes(item.id)} onChange={() => handleTogglePilih(item.id)} />
                 </div>
@@ -152,9 +125,7 @@ export default function DaftarAnggota() {
                   </div>
                 ) : (
                   <div className="pr-8">
-                    <span className="text-[10px] font-extrabold bg-[#8e0004] text-white px-2 py-0.5 rounded-md tracking-wider">
-                      {item.nomorAnggota || "MEMBER LAMA"}
-                    </span>
+                    <span className="text-[10px] font-extrabold bg-[#8e0004] text-white px-2 py-0.5 rounded-md tracking-wider">{item.nomorAnggota || "MEMBER LAMA"}</span>
                     <h3 className="font-bold text-gray-900 text-lg mt-1 line-clamp-1">{item.nama}</h3>
                     <p className="text-xs text-gray-500 font-medium mt-1">📍 {item.alamat}</p>
                     <p className="text-xs text-gray-500 font-medium">📞 {item.kontak}</p>
@@ -162,7 +133,11 @@ export default function DaftarAnggota() {
                     
                     <div className="flex gap-1.5 mt-3">
                       <button onClick={() => handleEditClick(item)} className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold rounded-lg hover:bg-amber-100 transition-all">Edit</button>
-                      <button onClick={() => handleDelete(item.id, item.nama)} className="px-3 py-1 bg-red-50 text-red-700 border border-red-200 text-xs font-bold rounded-lg hover:bg-red-100 transition-all">Hapus</button>
+                      
+                      {/* GEMBOK: HANYA SUPER ADMIN YANG BISA HAPUS ANGGOTA */}
+                      {hakAksesAdmin === "Akses Besar" && (
+                        <button onClick={() => handleDelete(item.id, item.nama)} className="px-3 py-1 bg-red-50 text-red-700 border border-red-200 text-xs font-bold rounded-lg hover:bg-red-100 transition-all">Hapus</button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -172,11 +147,9 @@ export default function DaftarAnggota() {
         )}
       </div>
 
-      {/* TAMPILAN KHUSUS PRINT KARTU ID */}
       <div className="hidden print:flex flex-wrap gap-4 justify-start items-start">
         {anggotaDifilter.filter(a => anggotaTerpilih.includes(a.id)).map((item) => (
           <div key={`card-${item.id}`} className="relative w-[8.5cm] h-[5.4cm] border-[2px] border-black bg-white rounded-lg overflow-hidden flex flex-col font-sans break-inside-avoid shadow-sm print-exact-colors" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
-            
             <div className="h-[1.6cm] w-full flex items-center px-2 gap-2 border-b-4 border-[#fec700]" style={{ backgroundColor: '#8e0004' }}>
               <div className="h-11 w-11 bg-white rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center">
                 <img src="/logo.jpg" alt="Logo" className="h-full w-full object-contain p-0.5 bg-white" />
@@ -186,37 +159,22 @@ export default function DaftarAnggota() {
                 <p className="text-[12px] font-black uppercase leading-tight tracking-wide" style={{ color: '#ffffff' }}>Rangkang Pustaka</p>
               </div>
             </div>
-
             <div className="flex-1 flex p-2 bg-gradient-to-br from-white to-gray-50">
               <div className="flex-1 flex flex-col justify-center gap-1.5">
-                <div>
-                  <p className="text-[7px] font-extrabold uppercase tracking-wider" style={{ color: '#6b7280' }}>Nama Anggota</p>
-                  <p className="text-[12px] font-black leading-tight line-clamp-1" style={{ color: '#111827' }}>{item.nama}</p>
-                </div>
-                <div>
-                  <p className="text-[7px] font-extrabold uppercase tracking-wider" style={{ color: '#6b7280' }}>No. Induk Anggota (NIA)</p>
-                  <p className="text-[11px] font-bold tracking-wide" style={{ color: '#8e0004' }}>{item.nomorAnggota || "MEMBER LAMA"}</p>
-                </div>
-                <div>
-                  <p className="text-[7px] font-extrabold uppercase tracking-wider" style={{ color: '#6b7280' }}>Alamat / Instansi</p>
-                  <p className="text-[9px] font-bold line-clamp-2 leading-tight" style={{ color: '#374151' }}>{item.alamat}</p>
-                </div>
+                <div><p className="text-[7px] font-extrabold uppercase tracking-wider text-gray-500">Nama Anggota</p><p className="text-[12px] font-black leading-tight line-clamp-1 text-gray-900">{item.nama}</p></div>
+                <div><p className="text-[7px] font-extrabold uppercase tracking-wider text-gray-500">No. Induk Anggota (NIA)</p><p className="text-[11px] font-bold tracking-wide text-[#8e0004]">{item.nomorAnggota || "MEMBER LAMA"}</p></div>
+                <div><p className="text-[7px] font-extrabold uppercase tracking-wider text-gray-500">Alamat / Instansi</p><p className="text-[9px] font-bold line-clamp-2 leading-tight text-gray-700">{item.alamat}</p></div>
               </div>
-
               <div className="w-[2.2cm] h-full flex flex-col items-center justify-center border-l-2 border-dashed border-gray-300 pl-2 flex-shrink-0">
                 <div className="w-[1.8cm] h-[1.8cm] bg-white border-2 border-gray-200 p-0.5 rounded-md shadow-sm">
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`ANGGOTA|${item.nomorAnggota || "LAMA"}|${item.nama}|${item.alamat}`)}`} 
-                    alt="QR Code Anggota" className="w-full h-full object-contain"
-                  />
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`ANGGOTA|${item.nomorAnggota || "LAMA"}|${item.nama}|${item.alamat}`)}`} alt="QR Code" className="w-full h-full object-contain" />
                 </div>
-                <p className="text-[6px] text-center mt-1 font-black uppercase leading-tight" style={{ color: '#6b7280' }}>Scan Untuk<br/>Akses Pustaka</p>
+                <p className="text-[6px] text-center mt-1 font-black uppercase leading-tight text-gray-500">Scan Untuk<br/>Akses Pustaka</p>
               </div>
             </div>
           </div>
         ))}
       </div>
-
     </div>
   );
 }

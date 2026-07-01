@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase";
 import { collection, addDoc, doc, getDoc, setDoc, serverTimestamp, getDocs } from "firebase/firestore";
 import ScannerModal from "./ScannerModal";
 
-export default function InputPeminjaman() {
+export default function InputPeminjaman({ hakAksesAdmin }) {
   const [lamaPinjam, setLamaPinjam] = useState(7);
   const [dendaPerHari, setDendaPerHari] = useState(1000);
   const [loadingAturan, setLoadingAturan] = useState(true);
@@ -18,14 +18,12 @@ export default function InputPeminjaman() {
   const [scanMode, setScanMode] = useState(null); 
   const [bukuList, setBukuList] = useState([]);
   
-  // STATE BARU: Untuk pencarian buku manual & kalender
   const [kataKunciBuku, setKataKunciBuku] = useState("");
   const [hasilCariBuku, setHasilCariBuku] = useState([]);
   const [tglJatuhTempoManual, setTglJatuhTempoManual] = useState("");
   const [minDate, setMinDate] = useState("");
 
   useEffect(() => {
-    // Kunci Kalender agar tidak bisa milih tanggal masa lalu
     const today = new Date();
     setMinDate(today.toISOString().split('T')[0]);
 
@@ -40,7 +38,6 @@ export default function InputPeminjaman() {
           setDendaPerHari(docSnap.data().dendaPerHari || 1000);
         }
         
-        // Mengatur default kalender berdasarkan Aturan Sirkulasi
         const defaultKembali = new Date();
         defaultKembali.setDate(defaultKembali.getDate() + durasi);
         setTglJatuhTempoManual(defaultKembali.toISOString().split('T')[0]);
@@ -58,14 +55,13 @@ export default function InputPeminjaman() {
     ambilAturan();
   }, []);
 
-  // FITUR CARI BUKU MANUAL
   useEffect(() => {
     if (kataKunciBuku.length > 1) {
       const keyword = kataKunciBuku.toLowerCase();
       const filtered = bukuList.filter(b => 
         (b.judul && b.judul.toLowerCase().includes(keyword)) || 
         (b.noBuku && b.noBuku.toLowerCase().includes(keyword))
-      ).slice(0, 5); // Tampilkan maksimal 5 saran
+      ).slice(0, 5);
       setHasilCariBuku(filtered);
     } else {
       setHasilCariBuku([]);
@@ -78,8 +74,7 @@ export default function InputPeminjaman() {
     } else {
       setBukuTerpilih(prev => [...prev, { id: buku.id, judul: buku.judul, noBuku: buku.noBuku }]);
     }
-    setKataKunciBuku(""); // Bersihkan kolom pencarian setelah dipilih
-    setHasilCariBuku([]);
+    setKataKunciBuku(""); setHasilCariBuku([]);
   };
 
   const handleSimpanAturan = async (e) => {
@@ -89,7 +84,6 @@ export default function InputPeminjaman() {
         lamaPinjam: Number(lamaPinjam),
         dendaPerHari: Number(dendaPerHari)
       });
-      // Update kalender manual setelah ganti aturan global
       const date = new Date();
       date.setDate(date.getDate() + Number(lamaPinjam));
       setTglJatuhTempoManual(date.toISOString().split('T')[0]);
@@ -125,9 +119,8 @@ export default function InputPeminjaman() {
     setLoadingPinjam(true);
     try {
       const tglPinjam = new Date();
-      // Menggunakan tanggal dari Input Kalender
       const tglJatuhTempo = new Date(tglJatuhTempoManual);
-      tglJatuhTempo.setHours(23, 59, 59); // Set waktu ke akhir hari tersebut
+      tglJatuhTempo.setHours(23, 59, 59);
 
       await addDoc(collection(db, "peminjaman"), {
         nomorAnggota: nomorAnggota || "NON-MEMBER",
@@ -153,7 +146,7 @@ export default function InputPeminjaman() {
     <div className="w-full flex flex-col md:flex-row gap-6 max-w-4xl">
       {scanMode && <ScannerModal title={`Scan QR ${scanMode}`} onScan={handleHasilScan} onClose={() => setScanMode(null)} />}
 
-      {/* BOX SEBELAH KIRI: SETELAN ATURAN */}
+      {/* BOX SEBELAH KIRI: SETELAN ATURAN (DIGEMBOK UNTUK AKSES DASAR) */}
       <div className="w-full md:w-[320px] bg-white p-5 rounded-2xl shadow-sm border border-gray-100 h-fit">
         <h3 className="font-black text-gray-800 text-sm uppercase tracking-wider mb-3 flex items-center gap-2 text-blue-700">
           <span>⚙️</span> Aturan Sirkulasi Global
@@ -162,15 +155,18 @@ export default function InputPeminjaman() {
           <form onSubmit={handleSimpanAturan} className="flex flex-col gap-3">
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Durasi Pinjam (Hari)</label>
-              <input type="number" required value={lamaPinjam} onChange={(e) => setLamaPinjam(e.target.value)} className="p-2 border-2 rounded-xl w-full text-sm font-bold bg-gray-50 focus:border-blue-600 outline-none" />
+              <input type="number" required disabled={hakAksesAdmin !== "Akses Besar"} value={lamaPinjam} onChange={(e) => setLamaPinjam(e.target.value)} className="p-2 border-2 rounded-xl w-full text-sm font-bold bg-gray-50 outline-none disabled:bg-gray-200 disabled:text-gray-500" />
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tarif Denda / Hari (Rp)</label>
-              <input type="number" required value={dendaPerHari} onChange={(e) => setDendaPerHari(e.target.value)} className="p-2 border-2 rounded-xl w-full text-sm font-bold bg-gray-50 focus:border-blue-600 outline-none" />
+              <input type="number" required disabled={hakAksesAdmin !== "Akses Besar"} value={dendaPerHari} onChange={(e) => setDendaPerHari(e.target.value)} className="p-2 border-2 rounded-xl w-full text-sm font-bold bg-gray-50 outline-none disabled:bg-gray-200 disabled:text-gray-500" />
             </div>
-            <button type="submit" className="py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-all shadow-sm">
-              💾 Terapkan Setelan
-            </button>
+            
+            {hakAksesAdmin === "Akses Besar" ? (
+              <button type="submit" className="py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-all shadow-sm mt-1">💾 Terapkan Setelan</button>
+            ) : (
+              <p className="text-[10px] text-red-600 font-bold bg-red-50 p-2 rounded-lg border border-red-200 text-center mt-1">🔒 Hanya Super Admin yang bisa mengubah aturan sirkulasi.</p>
+            )}
           </form>
         )}
       </div>
@@ -190,13 +186,11 @@ export default function InputPeminjaman() {
           </button>
         </div>
 
-        {/* KOLOM PENCARIAN BUKU MANUAL */}
         <div className="relative mb-5">
           <div className="flex items-center gap-2 p-2.5 border-2 rounded-xl bg-indigo-50 border-indigo-100">
             <span className="text-indigo-500 font-bold px-1">🔍</span>
             <input type="text" placeholder="Atau ketik & cari judul buku secara manual..." value={kataKunciBuku} onChange={(e) => setKataKunciBuku(e.target.value)} className="w-full bg-transparent outline-none text-xs font-bold text-gray-700" />
           </div>
-          {/* Hasil Dropdown */}
           {hasilCariBuku.length > 0 && (
             <div className="absolute top-12 left-0 w-full bg-white border-2 border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
               {hasilCariBuku.map(b => (
@@ -231,17 +225,9 @@ export default function InputPeminjaman() {
             )}
           </div>
 
-          {/* KALENDER TANGGAL JATUH TEMPO */}
           <div>
             <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tanggal Batas Pengembalian</label>
-            <input 
-              type="date" 
-              required 
-              min={minDate} 
-              value={tglJatuhTempoManual} 
-              onChange={(e) => setTglJatuhTempoManual(e.target.value)} 
-              className="w-full p-3 border-2 rounded-xl bg-gray-50 text-sm font-bold outline-none cursor-pointer focus:border-blue-600" 
-            />
+            <input type="date" required min={minDate} value={tglJatuhTempoManual} onChange={(e) => setTglJatuhTempoManual(e.target.value)} className="w-full p-3 border-2 rounded-xl bg-gray-50 text-sm font-bold outline-none cursor-pointer focus:border-blue-600" />
             <p className="text-[10px] text-gray-400 mt-1">*Bisa diubah secara manual dengan klik logo kalender.</p>
           </div>
 

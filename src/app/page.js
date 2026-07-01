@@ -12,7 +12,7 @@ import DaftarAbsensi from "@/components/DaftarAbsensi";
 import DashboardStats from "@/components/DashboardStats";
 import ScannerModal from "@/components/ScannerModal";
 import ManajemenPustakawan from "@/components/ManajemenPustakawan";
-import ManajemenKas from "@/components/ManajemenKas"; // KOMPONEN BARU DI-IMPORT
+import ManajemenKas from "@/components/ManajemenKas";
 
 import { auth, db } from "@/lib/firebase"; 
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
@@ -42,9 +42,9 @@ export default function Home() {
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
           const adminData = querySnapshot.docs[0].data();
-          setHakAksesAdmin(adminData.hakAkses || "Akses Besar"); 
+          setHakAksesAdmin(adminData.hakAkses || "Akses Dasar"); 
         } else {
-          setHakAksesAdmin("Akses Besar"); 
+          setHakAksesAdmin("Akses Dasar"); 
         }
       } else {
         setHakAksesAdmin("");
@@ -115,7 +115,7 @@ export default function Home() {
               <div className="flex flex-col items-end">
                 <div className="flex items-center gap-4 bg-white/10 p-2 rounded-xl backdrop-blur-sm">
                   <div className="flex flex-col items-end pr-2">
-                    <span className="text-[10px] font-bold text-[#fec700] uppercase tracking-wider">{hakAksesAdmin}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider ${hakAksesAdmin === "Akses Besar" ? "text-[#fec700]" : "text-gray-300"}`}>{hakAksesAdmin}</span>
                     <span className="text-xs font-bold text-white uppercase tracking-wider">{admin.email}</span>
                   </div>
                   <button onClick={handleLogout} className="px-4 py-2 bg-[#fec700] text-[#8e0004] font-extrabold rounded-lg hover:bg-yellow-400 transition-all text-xs shadow-md">LOGOUT</button>
@@ -161,13 +161,12 @@ export default function Home() {
           <div className="w-full flex gap-2 mb-8 flex-wrap overflow-x-auto pb-2">
             <button onClick={() => setActiveTabAdmin("buku")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "buku" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📚 Katalog</button>
             <button onClick={() => setActiveTabAdmin("sirkulasi")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "sirkulasi" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>🔄 Sirkulasi</button>
+            <button onClick={() => setActiveTabAdmin("anggota")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "anggota" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>👥 Anggota</button>
+            <button onClick={() => setActiveTabAdmin("absen")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "absen" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📝 Absensi</button>
             
             {hakAksesAdmin === "Akses Besar" && (
               <>
-                <button onClick={() => setActiveTabAdmin("anggota")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "anggota" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>👥 Anggota</button>
-                <button onClick={() => setActiveTabAdmin("absen")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "absen" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📝 Absensi</button>
                 <button onClick={() => setActiveTabAdmin("pustakawan")} className={`flex-1 min-w-[120px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "pustakawan" ? "bg-gray-900 text-[#fec700] border-gray-900" : "bg-white text-gray-800 border-gray-200"}`}>🛡️ Pustakawan</button>
-                {/* TOMBOL BARU KEUANGAN */}
                 <button onClick={() => setActiveTabAdmin("kas")} className={`flex-1 min-w-[120px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "kas" ? "bg-emerald-700 text-white border-emerald-700 shadow-md" : "bg-white text-emerald-700 border-gray-200"}`}>💰 Keuangan</button>
               </>
             )}
@@ -176,19 +175,18 @@ export default function Home() {
 
         <div className="w-full flex justify-center mb-8">
           {admin && activeTabAdmin === "buku" && <InputBuku />}
-          {admin && activeTabAdmin === "sirkulasi" && <InputPeminjaman />}
-          {admin && hakAksesAdmin === "Akses Besar" && activeTabAdmin === "anggota" && <InputAnggota />}
+          {admin && activeTabAdmin === "sirkulasi" && <InputPeminjaman hakAksesAdmin={hakAksesAdmin} />}
+          {admin && activeTabAdmin === "anggota" && <InputAnggota />}
         </div>
       </div> 
 
       <div className="w-full max-w-4xl flex justify-center">
         {(!admin && activeTabPublic === "katalog") && <DaftarBuku isAdmin={false} />}
-        {admin && activeTabAdmin === "buku" && <DaftarBuku isAdmin={true} />}
-        {admin && activeTabAdmin === "sirkulasi" && <DaftarPeminjaman />}
-        {admin && hakAksesAdmin === "Akses Besar" && activeTabAdmin === "anggota" && <DaftarAnggota />}
-        {admin && hakAksesAdmin === "Akses Besar" && activeTabAdmin === "absen" && <DaftarAbsensi />}
+        {admin && activeTabAdmin === "buku" && <DaftarBuku isAdmin={true} hakAksesAdmin={hakAksesAdmin} />}
+        {admin && activeTabAdmin === "sirkulasi" && <DaftarPeminjaman hakAksesAdmin={hakAksesAdmin} />}
+        {admin && activeTabAdmin === "anggota" && <DaftarAnggota hakAksesAdmin={hakAksesAdmin} />}
+        {admin && activeTabAdmin === "absen" && <DaftarAbsensi hakAksesAdmin={hakAksesAdmin} />}
         {admin && hakAksesAdmin === "Akses Besar" && activeTabAdmin === "pustakawan" && <ManajemenPustakawan />}
-        {/* RENDER KOMPONEN KEUANGAN */}
         {admin && hakAksesAdmin === "Akses Besar" && activeTabAdmin === "kas" && <ManajemenKas />}
       </div>
     </main>

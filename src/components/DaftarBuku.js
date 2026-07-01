@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, addDoc } from "firebase/firestore";
 import * as XLSX from "xlsx";
 
-export default function DaftarBuku({ isAdmin }) {
+export default function DaftarBuku({ isAdmin, hakAksesAdmin }) {
   const [buku, setBuku] = useState([]);
   const [loading, setLoading] = useState(true);
   const [kataKunci, setKataKunci] = useState("");
@@ -209,9 +209,18 @@ export default function DaftarBuku({ isAdmin }) {
             <input type="text" placeholder="Cari judul..." value={kataKunci} onChange={(e) => setKataKunci(e.target.value)} className="w-full sm:w-56 p-2.5 border-2 border-gray-200 rounded-xl outline-none focus:border-[#8e0004]" />
             {isAdmin && (
               <div className="flex gap-2 flex-wrap">
-                {bukuTerpilih.length > 0 && <button onClick={handleHapusBanyak} className="px-4 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 text-sm shadow-sm">🗑️ Hapus ({bukuTerpilih.length})</button>}
-                <button onClick={() => fileInputRef.current.click()} disabled={isImporting} className="px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 text-sm">📥 Import</button>
-                <button onClick={handleExportExcel} className="px-4 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 text-sm">📊 Export</button>
+                {/* GEMBOK: HAPUS BANYAK */}
+                {hakAksesAdmin === "Akses Besar" && bukuTerpilih.length > 0 && (
+                  <button onClick={handleHapusBanyak} className="px-4 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 text-sm shadow-sm">🗑️ Hapus ({bukuTerpilih.length})</button>
+                )}
+                {/* GEMBOK: IMPORT EXCEL */}
+                {hakAksesAdmin === "Akses Besar" && (
+                  <button onClick={() => fileInputRef.current.click()} disabled={isImporting} className="px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 text-sm">📥 Import</button>
+                )}
+                {/* GEMBOK: EXPORT EXCEL */}
+                {hakAksesAdmin === "Akses Besar" && (
+                  <button onClick={handleExportExcel} className="px-4 py-2.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 text-sm">📊 Export</button>
+                )}
                 <button onClick={handleCetakLabel} className="px-4 py-2.5 bg-gray-800 text-white font-bold rounded-xl hover:bg-gray-900 text-sm">🏷️ Cetak</button>
               </div>
             )}
@@ -249,7 +258,6 @@ export default function DaftarBuku({ isAdmin }) {
                       <input className="p-2 border rounded-lg bg-gray-50" placeholder="Kota Terbit" value={editTempatTerbit} onChange={(e) => setEditTempatTerbit(e.target.value)} />
                     </div>
                     
-                    {/* BAGIAN INI SUDAH SAYA TAMBAHKAN KOLOM ASAL/SUMBER */}
                     <div className="grid grid-cols-3 gap-2">
                       <input className="p-2 border rounded-lg bg-gray-50" placeholder="Tahun" value={editTahun} onChange={(e) => setEditTahun(e.target.value)} />
                       <input className="p-2 border rounded-lg bg-gray-50" placeholder="Edisi" value={editEdisi} onChange={(e) => setEditEdisi(e.target.value)} />
@@ -285,7 +293,10 @@ export default function DaftarBuku({ isAdmin }) {
                       {isAdmin && (
                         <div className="flex gap-1.5 mt-3">
                           <button onClick={() => handleEditClick(item)} className="px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold rounded-lg">Edit</button>
-                          <button onClick={() => handleDelete(item.id, item.judul)} className="px-3 py-1 bg-red-50 text-red-700 border border-red-200 text-xs font-bold rounded-lg">Hapus</button>
+                          {/* GEMBOK HAPUS SATUAN */}
+                          {hakAksesAdmin === "Akses Besar" && (
+                            <button onClick={() => handleDelete(item.id, item.judul)} className="px-3 py-1 bg-red-50 text-red-700 border border-red-200 text-xs font-bold rounded-lg hover:bg-red-100 transition-all">Hapus</button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -300,7 +311,6 @@ export default function DaftarBuku({ isAdmin }) {
       <div className="hidden print:flex flex-wrap gap-4 justify-start items-start">
         {bukuDifilter.filter(b => bukuTerpilih.includes(b.id)).map((item) => (
           <div key={`label-${item.id}`} className="w-[9cm] h-[4.5cm] border-[3px] border-black flex flex-col bg-white font-sans break-inside-avoid overflow-hidden" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact', color: 'black' }}>
-            
             <div className="flex border-b-[3px] border-black h-[45%]">
               <div className="w-[25%] border-r-[3px] border-black flex items-center justify-center p-1 bg-white">
                 <img src="/logo.jpg" alt="Logo Rangkang" className="max-h-full max-w-full object-contain grayscale" style={{ filter: 'grayscale(100%) contrast(1.2)' }} />
@@ -313,7 +323,6 @@ export default function DaftarBuku({ isAdmin }) {
                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&margin=1&data=${encodeURIComponent(`BUKU|${item.id}`)}`} alt="QR Buku" className="w-full h-full object-contain" />
               </div>
             </div>
-
             <div className="flex h-[55%] text-[11px]">
               <div className="w-[35%] border-r-[3px] border-black px-1.5 py-1 flex flex-col justify-between font-bold text-black">
                 <p>No. Registrasi</p><p>Tahun Terbit</p><p>Asal / Sumber</p><p>Kategori</p>
@@ -323,7 +332,6 @@ export default function DaftarBuku({ isAdmin }) {
                 <p className="truncate">: {item.sumber || "-"}</p><p className="truncate">: {item.kategori}</p>
               </div>
             </div>
-
           </div>
         ))}
       </div>
