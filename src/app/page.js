@@ -103,8 +103,7 @@ export default function Home() {
         <div className="w-full flex flex-col md:flex-row justify-between items-center mb-6 bg-[#8e0004] p-5 md:p-6 rounded-2xl shadow-lg border-b-[6px] border-[#fec700] relative overflow-hidden gap-4">
           
           <div className="relative z-10 flex items-center gap-4 text-center md:text-left select-none">
-            
-            {/* 🚪 LOGO SAKTI: PINTU MASUK RAHASIA PUSTAKAWAN */}
+            {/* LOGO SAKTI: PINTU MASUK RAHASIA PUSTAKAWAN */}
             <div 
               onClick={() => !admin && setTampilkanLogin(!tampilkanLogin)} 
               className={`bg-white py-2 px-3 rounded-xl shadow-md border-b-4 border-gray-200 flex-shrink-0 transition-all ${!admin ? 'cursor-pointer active:scale-95 hover:brightness-95' : ''}`}
@@ -120,7 +119,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* KANAN BANNER: HANYA MUNCUL JIKA SUDAH LOGIN (UNTUK LOGOUT) */}
+          {/* KANAN BANNER: TOMBOL LOGOUT */}
           <div className="relative z-10 w-full md:w-auto flex justify-center md:justify-end">
             {admin && (
               <div className="flex flex-col items-end">
@@ -136,7 +135,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* FORMULIR LOGIN INTERNAL (HANYA MUNCUL JIKA LOGO DIKLIK SAAT BELUM LOGIN) */}
+        {/* FORMULIR LOGIN INTERNAL (RUNTUH JIKA LOGO DIKLIK) */}
         {!admin && tampilkanLogin && (
           <div className="w-full bg-white border-2 border-[#8e0004] p-5 rounded-2xl shadow-md mb-6 animate-in slide-in-from-top duration-300">
             <div className="flex justify-between items-center mb-4 border-b pb-3">
@@ -157,21 +156,68 @@ export default function Home() {
           </div>
         )}
 
-        {/* MENU NAVIGASI PENGUNJUNG UMUM */}
+        {/* TAMPILAN KIOSK PENGUNJUNG UMUM */}
         {!admin && (
-          <div className="w-full flex gap-2 mb-6 bg-gray-200/50 p-1.5 rounded-xl border">
-            <button onClick={() => setActiveTabPublic("katalog")} className={`flex-1 py-3.5 text-sm font-black rounded-lg transition-all flex items-center justify-center gap-2 ${activeTabPublic === "katalog" ? "bg-white text-[#8e0004] shadow-sm border" : "text-gray-600 hover:text-gray-900"}`}>📚 CARI KOLEKSI BUKU</button>
-            <button onClick={() => setActiveTabPublic("absen")} className={`flex-1 py-3.5 text-sm font-black rounded-lg transition-all flex items-center justify-center gap-2 ${activeTabPublic === "absen" ? "bg-white text-[#8e0004] shadow-sm border" : "text-gray-600 hover:text-gray-900"}`}>📝 ISI BUKU TAMU</button>
+          <div className="w-full flex flex-col items-center animate-in fade-in duration-500">
+            {/* Pesan Sambutan */}
+            <div className="text-center mb-6 mt-2">
+              <h1 className="text-2xl sm:text-3xl font-black text-gray-800 tracking-tight mb-2">Selamat Datang Sobat Literasi! 👋</h1>
+              <p className="text-sm text-gray-500 font-medium">Jelajahi jendela dunia dari desa kita. Silakan pilih menu di bawah ini.</p>
+            </div>
+
+            {/* Menu Utama (Card Style Raksasa) */}
+            <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <button
+                onClick={() => setActiveTabPublic("katalog")}
+                className={`flex flex-col items-center justify-center p-6 sm:p-8 rounded-3xl transition-all border-[3px] group ${
+                  activeTabPublic === "katalog"
+                    ? "bg-white border-[#8e0004] shadow-[#8e0004]/20 shadow-xl scale-[1.02]"
+                    : "bg-gray-50 border-gray-200 hover:border-gray-300 hover:bg-gray-100 shadow-sm"
+                }`}
+              >
+                <span className="text-5xl sm:text-6xl mb-3 group-hover:scale-110 transition-transform duration-300">📚</span>
+                <h3 className={`text-lg sm:text-xl font-black uppercase tracking-widest mt-2 ${activeTabPublic === "katalog" ? "text-[#8e0004]" : "text-gray-700"}`}>Katalog Koleksi</h3>
+                <p className="text-xs text-gray-500 font-bold mt-2 text-center">Cari buku favoritmu di sini</p>
+              </button>
+
+              <button
+                onClick={() => setActiveTabPublic("absen")}
+                className={`flex flex-col items-center justify-center p-6 sm:p-8 rounded-3xl transition-all border-[3px] group ${
+                  activeTabPublic === "absen"
+                    ? "bg-white border-[#8e0004] shadow-[#8e0004]/20 shadow-xl scale-[1.02]"
+                    : "bg-gray-50 border-gray-200 hover:border-gray-300 hover:bg-gray-100 shadow-sm"
+                }`}
+              >
+                <span className="text-5xl sm:text-6xl mb-3 group-hover:scale-110 transition-transform duration-300">📝</span>
+                <h3 className={`text-lg sm:text-xl font-black uppercase tracking-widest mt-2 ${activeTabPublic === "absen" ? "text-[#8e0004]" : "text-gray-700"}`}>Isi Buku Tamu</h3>
+                <p className="text-xs text-gray-500 font-bold mt-2 text-center">Rekam jejak kunjungan hari ini</p>
+              </button>
+            </div>
+
+            {/* Petunjuk Pintar Saat Membuka Katalog */}
+            {activeTabPublic === "katalog" && (
+               <div className="w-full bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 mb-4 flex items-start gap-3 shadow-sm">
+                 <span className="text-blue-600 text-2xl animate-bounce">💡</span>
+                 <div>
+                   <h4 className="text-sm font-black text-blue-900 mb-1 uppercase tracking-wider">Petunjuk Peminjaman:</h4>
+                   <p className="text-xs text-blue-800 font-semibold leading-relaxed">
+                     1. Cari judul buku pada kotak pencarian di bawah.<br/>
+                     2. Perhatikan tulisan warna merah <b className="bg-red-100 px-1 rounded text-red-700">No: xxx</b> untuk mencari bukunya di dalam rak.<br/>
+                     3. Ambil buku tersebut dan bawa ke meja Pustakawan beserta Kartu Anggota Anda.
+                   </p>
+                 </div>
+               </div>
+            )}
           </div>
         )}
 
-        {/* KONTEN PENGUNJUNG UMUM */}
+        {/* INPUT BUKU TAMU PENGUNJUNG */}
         {!admin && activeTabPublic === "absen" && <InputAbsensi />}
         
-        {/* STATISTIK INTERNAL (HANYA UNTUK ADMIN AKSES BESAR) */}
+        {/* STATISTIK INTERNAL (HANYA AKSES BESAR) */}
         {admin && hakAksesAdmin === "Akses Besar" && <DashboardStats />}
 
-        {/* MENU UTAMA DASHBOARD INTERNAL PUSTAKAWAN */}
+        {/* MENU PANEL INTERNAL PUSTAKAWAN */}
         {admin && (
           <div className="w-full flex gap-2 mb-8 flex-wrap overflow-x-auto pb-2">
             <button onClick={() => setActiveTabAdmin("buku")} className={`flex-1 min-w-[100px] py-3 text-xs sm:text-sm font-extrabold rounded-xl transition-all border-2 ${activeTabAdmin === "buku" ? "bg-[#8e0004] text-white border-[#8e0004]" : "bg-white text-[#8e0004] border-gray-200"}`}>📚 Katalog</button>
@@ -188,7 +234,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* INPUT PANEL INTERNAL */}
+        {/* INPUT BOX INTERNAL */}
         <div className="w-full flex justify-center mb-8">
           {admin && activeTabAdmin === "buku" && <InputBuku />}
           {admin && activeTabAdmin === "sirkulasi" && <InputPeminjaman hakAksesAdmin={hakAksesAdmin} />}
@@ -196,7 +242,7 @@ export default function Home() {
         </div>
       </div> 
 
-      {/* REKORD DATA / TABEL UTAMA */}
+      {/* RENDER TABEL & REKORD DATA UTAMA */}
       <div className="w-full max-w-4xl flex justify-center">
         {(!admin && activeTabPublic === "katalog") && <DaftarBuku isAdmin={false} />}
         {admin && activeTabAdmin === "buku" && <DaftarBuku isAdmin={true} hakAksesAdmin={hakAksesAdmin} />}
