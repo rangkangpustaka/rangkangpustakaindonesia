@@ -97,6 +97,18 @@ export default function Home() {
       
       {tampilkanKameraAdmin && <ScannerModal title="Scan Kartu Pustakawan" onScan={handleScanAdmin} onClose={() => setTampilkanKameraAdmin(false)} />}
 
+      {/* ========================================= */}
+      {/* RUNNING TEXT / PAPAN PENGUMUMAN BERJALAN  */}
+      {/* ========================================= */}
+      {!admin && (
+        <div className="w-full max-w-4xl bg-yellow-400 text-[#8e0004] text-xs font-black py-2 px-4 rounded-xl mb-4 overflow-hidden shadow-sm border border-yellow-500/30 flex items-center select-none">
+          <span className="bg-[#8e0004] text-white px-2 py-0.5 rounded-md text-[10px] mr-3 tracking-wider flex-shrink-0">INFO</span>
+          <marquee className="cursor-pointer" scrollamount="4">
+            📢 Selamat Datang di Rangkang Pustaka! Silakan isi buku tamu sebelum membaca • Mari patuhi batas waktu pengembalian buku demi kenyamanan bersama • Ingin mendonasikan buku? Hubungi pengurus perpustakaan di nomor kontak bawah halaman.
+          </marquee>
+        </div>
+      )}
+
       <div className="w-full max-w-4xl flex flex-col items-center print:hidden">
         
         {/* BANNER ATAS UTAMA */}
@@ -135,7 +147,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* FORMULIR LOGIN INTERNAL (RUNTUH JIKA LOGO DIKLIK) */}
+        {/* FORMULIR LOGIN INTERNAL */}
         {!admin && tampilkanLogin && (
           <div className="w-full bg-white border-2 border-[#8e0004] p-5 rounded-2xl shadow-md mb-6 animate-in slide-in-from-top duration-300">
             <div className="flex justify-between items-center mb-4 border-b pb-3">
@@ -272,15 +284,15 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Kolom 2: Jam Operasional */}
+          {/* Kolom 2: Jam Operasional (SUDAH DIUPDATE) */}
           <div className="flex-1 md:border-l md:border-r border-gray-100 md:px-6">
             <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
               <span className="text-2xl">⏰</span>
               <h4 className="font-black text-gray-800 uppercase tracking-widest text-sm">Jam Operasional</h4>
             </div>
-            <p className="text-xs text-gray-500 font-bold">Sabtu - Minggu</p>
+            <p className="text-xs text-gray-500 font-bold">Hari Buka: Minggu</p>
             <p className="text-xs font-black text-[#8e0004] mt-1 bg-red-50 inline-block px-2 py-1 rounded-lg border border-red-100">
-              08.00 - 16.00 WIB
+              09.00 - 13.20 WIB
             </p>
           </div>
 
