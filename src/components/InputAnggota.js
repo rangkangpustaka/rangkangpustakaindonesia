@@ -7,7 +7,8 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 export default function InputAnggota() {
   const [tipeAnggota, setTipeAnggota] = useState("Umum");
   const [jenisKelamin, setJenisKelamin] = useState("Laki-laki");
-  const [kategoriUsia, setKategoriUsia] = useState("Anak-anak"); // State Kategori Usia Baru
+  const [kategoriUsia, setKategoriUsia] = useState("Anak-anak");
+  const [kelasRangkang, setKelasRangkang] = useState("ALFA (1-3 SD)"); // STATE KELAS BARU
   
   const [nomorAnggota, setNomorAnggota] = useState("");
   const [nama, setNama] = useState("");
@@ -27,7 +28,8 @@ export default function InputAnggota() {
     try {
       await addDoc(collection(db, "anggota"), {
         tipeAnggota,
-        kategoriUsia, // Menyimpan Anak/Remaja/Dewasa
+        kategoriUsia,
+        kelasRangkang: tipeAnggota === "Peserta Didik" ? kelasRangkang : "-",
         jenisKelamin: tipeAnggota === "Peserta Didik" ? jenisKelamin : "-",
         nomorAnggota: nomorAnggota || `NIA-${Math.floor(Math.random() * 10000)}`,
         nama,
@@ -36,13 +38,14 @@ export default function InputAnggota() {
         alamat,
         kontak: kontak || "-",
         namaWali: tipeAnggota === "Peserta Didik" ? namaWali : "-",
-        fotoUrl: fotoUrl || "", 
+        fotoUrl: tipeAnggota === "Peserta Didik" ? fotoUrl : "", // Kosong jika umum
         tanggalDaftar: new Date().toLocaleDateString("id-ID"),
         createdAt: serverTimestamp(),
       });
       
       setNomorAnggota(""); setNama(""); setTempatLahir(""); setTanggalLahir(""); 
-      setAlamat(""); setKontak(""); setNamaWali(""); setFotoUrl(""); setKategoriUsia("Anak-anak");
+      setAlamat(""); setKontak(""); setNamaWali(""); setFotoUrl(""); 
+      setKategoriUsia("Anak-anak"); setKelasRangkang("ALFA (1-3 SD)");
       
       setSukses(true);
       setTimeout(() => setSukses(false), 4000);
@@ -102,23 +105,31 @@ export default function InputAnggota() {
           </div>
         </div>
 
-        {/* KHUSUS PESERTA DIDIK: GENDER & TTL */}
+        {/* KHUSUS PESERTA DIDIK: KELAS, GENDER & TTL */}
         {tipeAnggota === "Peserta Didik" && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
             <div>
-              <label className="text-xs font-bold text-indigo-900 mb-1 block">Jenis Kelamin</label>
-              <select value={jenisKelamin} onChange={(e) => setJenisKelamin(e.target.value)} className="w-full p-3 border-2 border-white rounded-xl bg-white focus:border-indigo-600 outline-none text-sm font-bold text-gray-900 cursor-pointer shadow-sm">
-                <option value="Laki-laki">Laki-laki (Putra)</option>
-                <option value="Perempuan">Perempuan (Putri)</option>
+              <label className="text-[10px] font-black text-indigo-900 mb-1 block uppercase">Kelas Rangkang</label>
+              <select value={kelasRangkang} onChange={(e) => setKelasRangkang(e.target.value)} className="w-full p-3 border-2 border-white rounded-xl bg-white focus:border-indigo-600 outline-none text-xs font-black text-[#8e0004] cursor-pointer shadow-sm">
+                <option value="ALFA (1-3 SD)">ALFA (1-3 SD)</option>
+                <option value="BETA (4-6 SD)">BETA (4-6 SD)</option>
+                <option value="SIGMA (SMP)">SIGMA (SMP)</option>
               </select>
             </div>
             <div>
-              <label className="text-xs font-bold text-indigo-900 mb-1 block">Tempat Lahir</label>
-              <input type="text" value={tempatLahir} onChange={(e) => setTempatLahir(e.target.value)} placeholder="Contoh: Nisam" className="w-full p-3 border-2 border-white rounded-xl bg-white focus:border-indigo-600 outline-none text-sm font-bold transition-all shadow-sm" />
+              <label className="text-[10px] font-black text-indigo-900 mb-1 block uppercase">Jenis Kelamin</label>
+              <select value={jenisKelamin} onChange={(e) => setJenisKelamin(e.target.value)} className="w-full p-3 border-2 border-white rounded-xl bg-white focus:border-indigo-600 outline-none text-xs font-bold text-gray-900 cursor-pointer shadow-sm">
+                <option value="Laki-laki">Putra</option>
+                <option value="Perempuan">Putri</option>
+              </select>
             </div>
             <div>
-              <label className="text-xs font-bold text-indigo-900 mb-1 block">Tanggal Lahir</label>
-              <input type="date" value={tanggalLahir} onChange={(e) => setTanggalLahir(e.target.value)} className="w-full p-3 border-2 border-white rounded-xl bg-white focus:border-indigo-600 outline-none text-sm font-bold transition-all cursor-pointer shadow-sm" />
+              <label className="text-[10px] font-black text-indigo-900 mb-1 block uppercase">Tempat Lahir</label>
+              <input type="text" value={tempatLahir} onChange={(e) => setTempatLahir(e.target.value)} placeholder="Contoh: Nisam" className="w-full p-3 border-2 border-white rounded-xl bg-white focus:border-indigo-600 outline-none text-xs font-bold shadow-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-indigo-900 mb-1 block uppercase">Tanggal Lahir</label>
+              <input type="date" value={tanggalLahir} onChange={(e) => setTanggalLahir(e.target.value)} className="w-full p-3 border-2 border-white rounded-xl bg-white focus:border-indigo-600 outline-none text-xs font-bold cursor-pointer shadow-sm" />
             </div>
           </div>
         )}
@@ -143,11 +154,13 @@ export default function InputAnggota() {
           </div>
         </div>
 
-        {/* INPUT FOTO */}
-        <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100 mt-2">
-          <label className="text-xs font-black text-amber-900 mb-1 block uppercase tracking-wider">Link Foto Google Drive (Wajib Untuk ID Card Vertikal)</label>
-          <input type="text" value={fotoUrl} onChange={(e) => setFotoUrl(e.target.value)} placeholder="Paste link Google Drive yang sudah di-share (Anyone with link)..." className="w-full p-3 border-2 rounded-xl bg-white focus:border-amber-600 outline-none text-sm transition-all" />
-        </div>
+        {/* LOGIKA: HANYA MUNCUL UNTUK PESERTA DIDIK */}
+        {tipeAnggota === "Peserta Didik" && (
+          <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100 mt-2">
+            <label className="text-xs font-black text-amber-900 mb-1 block uppercase tracking-wider">Link Foto Google Drive (Untuk ID Card Vertikal)</label>
+            <input type="text" value={fotoUrl} onChange={(e) => setFotoUrl(e.target.value)} placeholder="Paste link Google Drive yang sudah di-share (Siapa saja memiliki link)..." className="w-full p-3 border-2 rounded-xl bg-white focus:border-amber-600 outline-none text-sm transition-all" />
+          </div>
+        )}
 
         <button type="submit" disabled={loading} className="w-full mt-4 py-4 bg-[#8e0004] text-white font-black tracking-widest rounded-xl hover:bg-red-800 transition-all shadow-md text-sm sm:text-base uppercase">
           {loading ? "Menyimpan Data..." : "Daftarkan Ke Sistem"}
